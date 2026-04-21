@@ -1,0 +1,41 @@
+{
+  "name": "fullstack-template",
+  "type": "module",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "bun --filter '*' dev",
+    "build": "bun --filter '*' build",
+    "lint": "bun --filter '*' lint",
+    "lint:fix": "bun --filter '*' lint:fix",
+    "prepare": "simple-git-hooks",
+    "db:generate": "bun --filter server db:generate",
+    "db:migrate": "cd apps/server && bun run db:migrate",
+    "db:studio": "bun --filter server db:studio",
+    "db:reset": "cd apps/server && bun run db:reset"
+  },
+  "devDependencies": {
+    "@antfu/eslint-config": "^8.2.0",
+    "@commitlint/cli": "^20.5.0",
+    "@commitlint/config-conventional": "^20.5.0",
+    "eslint": "^10.2.1",
+    "lint-staged": "^16.1.2",
+    "server": "workspace:*",
+    "simple-git-hooks": "^2.13.1"
+  },
+  "simple-git-hooks": {
+    "pre-commit": "npx lint-staged",
+    "commit-msg": "npx --no -- commitlint --edit $1"
+  },
+  "lint-staged": {
+    "*": "eslint --fix"
+  },
+  "commitlint": {
+    "extends": [
+      "@commitlint/config-conventional"
+    ]
+  }
+}
