@@ -5,9 +5,16 @@ export const UserModel = new Elysia()
     'user.create': t.Object({
       name: t.String({ description: 'User name', minLength: 1 }),
     }),
-    'user.response': t.Object({
+    'user.item': t.Object({
       id: t.Number({ description: 'User ID' }),
       name: t.String({ description: 'User name' }),
       createdAt: t.Date({ description: 'Creation date' }),
     }),
+    'user.list': t.Array(
+      t.Object({
+        id: t.Number({ description: 'User ID' }),
+        name: t.String({ description: 'User name' }),
+        createdAt: t.Date({ description: 'Creation date' }),
+      }),
+    ),
   })

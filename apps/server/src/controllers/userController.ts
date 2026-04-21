@@ -5,6 +5,7 @@ import { UserService } from '../services/userService'
 export const userController = new Elysia({ prefix: '/api/users' })
   .use(UserModel)
   .get('/', () => UserService.findAll(), {
+    response: 'user.list',
     detail: {
       tags: ['Users'],
       summary: 'Get all users',
@@ -18,5 +19,5 @@ export const userController = new Elysia({ prefix: '/api/users' })
       summary: 'Create a user',
       description: 'Creates a new user and returns the created record',
     },
-    response: 'user.response',
+    response: 'user.item',
   })

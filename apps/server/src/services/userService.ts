@@ -1,4 +1,4 @@
-import { db } from '../db'
+import { db } from '../_db'
 
 export class UserService {
   static findAll() {

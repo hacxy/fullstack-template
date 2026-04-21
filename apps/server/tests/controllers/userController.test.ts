@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, mock } from 'bun:test'
 const mockFindMany = mock()
 const mockCreate = mock()
 
-mock.module('../../src/db', () => ({
+mock.module('../../src/_db', () => ({
   db: {
     user: {
       findMany: mockFindMany,
