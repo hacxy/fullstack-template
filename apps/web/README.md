@@ -14,7 +14,7 @@
 | 代码规范 | ESLint + @antfu/eslint-config |
 | E2E 测试 | Playwright |
 | 覆盖率 | vite-plugin-istanbul + nyc |
-| Git 规范 | simple-git-hooks + commitlint（Conventional Commits）|
+| Git 规范 | Husky + lint-staged + commitlint（Conventional Commits）|
 
 ## 项目结构
 
