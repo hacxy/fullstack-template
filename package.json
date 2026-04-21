@@ -15,7 +15,9 @@
     "db:generate": "bun --filter server db:generate",
     "db:migrate": "cd apps/server && bun run db:migrate",
     "db:studio": "bun --filter server db:studio",
-    "db:reset": "cd apps/server && bun run db:reset"
+    "db:reset": "cd apps/server && bun run db:reset",
+    "test": "bun --filter web test:e2e && bun --filter server test",
+    "coverage:report": "bun --filter '*' coverage:report"
   },
   "devDependencies": {
     "@antfu/eslint-config": "^8.2.0",

@@ -28,3 +28,12 @@ dist-ssr
 coverage/
 playwright-report/
 test-results
+
+# Database files
+*.db
+*.db-shm
+*.db-wal
+
+# Environment
+.env
+.env.local
