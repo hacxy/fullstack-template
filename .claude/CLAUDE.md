@@ -26,9 +26,13 @@
 apps/
   server/          # Elysia API server
     prisma/        # Schema and SQLite database
+    tests/         # bun:test unit & integration tests (mirrors src/ structure)
     src/
       db/          # Prisma client
-      routes/      # Route handlers
+      models/      # Elysia type models (namespace.purpose key convention, e.g. user.create)
+      controllers/ # Request handlers (thin layer, delegates to services)
+      services/    # Business logic
+      routes/      # Route definitions and handler wiring
       index.ts     # Server entry point (port 3000, Swagger at /scalar)
   web/             # React frontend
     e2e/           # Playwright tests
