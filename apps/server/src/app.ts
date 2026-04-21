@@ -1,0 +1,27 @@
+import { cors } from '@elysiajs/cors'
+import { swagger } from '@elysiajs/swagger'
+import { Elysia } from 'elysia'
+import { userController } from './controllers/userController'
+
+export const app = new Elysia()
+  .use(cors({ origin: 'http://localhost:5173' }))
+  .use(swagger({
+    path: '/scalar',
+    documentation: {
+      info: {
+        title: 'Fullstack Template API',
+        version: '1.0.0',
+        description: 'RESTful API for the fullstack template project',
+        contact: {
+          name: 'API Support',
+          email: 'support@example.com',
+        },
+      },
+      servers: [
+        { url: 'http://localhost:3000', description: 'Local development server' },
+      ],
+    },
+  }))
+  .use(userController)
+
+export type App = typeof app

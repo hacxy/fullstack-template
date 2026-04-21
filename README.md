@@ -186,3 +186,86 @@ feat: add user login
 fix: handle null response from API
 chore: update dependencies
 ```
+
+---
+
+## Deployment
+
+The project deploys to a self-hosted Linux x64 server via GitHub Actions. Pushing a `prod_*` tag triggers the workflow, which runs lint + tests, builds a self-contained server binary and the web static files, then uploads them to the server over SSH.
+
+**Architecture on the server:**
+
+- **Backend** — runs as a systemd service (`myapp-server`), serves on port 3000
+- **Frontend** — static files served by Nginx
+- **Nginx** — reverse proxies `/api/` to the backend, serves everything else as SPA static files
+
+### Step 1 — First-time server setup
+
+Run `scripts/server-setup.sh` once on your server (requires sudo):
+
+```bash
+# Usage: bash server-setup.sh [deploy_user] [deploy_pubkey]
+bash scripts/server-setup.sh deploy "ssh-ed25519 AAAA... github-actions"
+```
+
+This creates the `myapp` service user, directory structure, systemd service, and sudo permissions for the deploy user.
+
+**Expected directory layout after setup:**
+
+```
+/opt/myapp/
+├── server/
+│   ├── bin/server          # self-contained binary (replaced on each deploy)
+│   └── prisma/
+│       ├── sqlite.db       # database file (never overwritten by deploys)
+│       ├── schema.prisma
+│       └── migrations/
+└── web/                    # frontend static files
+```
+
+### Step 2 — Configure Nginx
+
+Copy `scripts/nginx-myapp.conf` to your server, update `server_name`, then enable it:
+
+```bash
+sudo cp nginx-myapp.conf /etc/nginx/sites-available/myapp
+sudo ln -s /etc/nginx/sites-available/myapp /etc/nginx/sites-enabled/
+sudo nginx -t && sudo systemctl reload nginx
+```
+
+### Step 3 — Configure GitHub Secrets
+
+In your repository go to **Settings → Secrets and variables → Actions** and add:
+
+| Secret | Value |
+|--------|-------|
+| `SERVER_HOST` | Server IP or domain |
+| `SERVER_USER` | SSH login username (e.g. `deploy`) |
+| `SSH_PRIVATE_KEY` | Full content of the SSH private key |
+
+### Step 4 — Deploy
+
+Push a `prod_` prefixed tag to trigger the deployment workflow:
+
+```bash
+git tag prod_v1.0.0
+git push origin prod_v1.0.0
+```
+
+The workflow runs in this order:
+
+```
+lint ──┐
+       ├─► build-server ──┐
+test ──┘                   ├─► deploy
+       └─► build-web ──────┘
+```
+
+You can monitor progress in the **Actions** tab on GitHub.
+
+### Notes
+
+- **Database safety** — `sqlite.db` is never included in build artifacts and is never overwritten during deployment. Only `migrations/` and `schema.prisma` are synced.
+- **Database migrations** — `prisma migrate deploy` runs automatically on each deploy. On first deploy it creates the database and applies all migrations.
+- **Downtime** — Due to SQLite's single-writer constraint, the service stops briefly (~1–3 s) while the binary is replaced.
+- **Bun on server** — Only needed for running migrations. The server binary is self-contained and does not require Bun to run. The setup script installs Bun automatically on first deploy if not present.

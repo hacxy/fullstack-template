@@ -8,6 +8,7 @@ export const UserModel = new Elysia()
     'user.item': t.Object({
       id: t.Number({ description: 'User ID' }),
       name: t.String({ description: 'User name' }),
+      foo: t.Optional(t.String()),
       createdAt: t.Date({ description: 'Creation date' }),
     }),
     'user.list': t.Array(

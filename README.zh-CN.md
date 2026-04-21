@@ -188,3 +188,86 @@ feat: 添加用户登录功能
 fix: 修复 API 返回空值时的异常
 chore: 更新依赖版本
 ```
+
+---
+
+## 部署
+
+项目通过 GitHub Actions 部署到自托管的 Linux x64 服务器。推送 `prod_*` 前缀的 tag 会触发部署流程：依次执行 lint 检查、运行测试、构建自包含的服务端二进制和前端静态文件，最后通过 SSH 上传到服务器。
+
+**服务器架构：**
+
+- **后端** — 以 systemd 服务（`myapp-server`）运行，监听端口 3000
+- **前端** — 静态文件由 Nginx 提供服务
+- **Nginx** — 将 `/api/` 反向代理到后端，其余路径作为 SPA 静态文件处理
+
+### 第一步 — 首次服务器初始化
+
+在服务器上执行一次 `scripts/server-setup.sh`（需要 sudo 权限）：
+
+```bash
+# 用法: bash server-setup.sh [部署用户名] [SSH 公钥]
+bash scripts/server-setup.sh deploy "ssh-ed25519 AAAA... github-actions"
+```
+
+此脚本会创建 `myapp` 服务用户、目录结构、systemd service 文件，以及部署用户的 sudo 权限。
+
+**初始化后的目录结构：**
+
+```
+/opt/myapp/
+├── server/
+│   ├── bin/server          # 自包含二进制（每次部署替换）
+│   └── prisma/
+│       ├── sqlite.db       # 数据库文件（部署时永不覆盖）
+│       ├── schema.prisma
+│       └── migrations/
+└── web/                    # 前端静态文件
+```
+
+### 第二步 — 配置 Nginx
+
+将 `scripts/nginx-myapp.conf` 复制到服务器，修改其中的 `server_name`，然后启用：
+
+```bash
+sudo cp nginx-myapp.conf /etc/nginx/sites-available/myapp
+sudo ln -s /etc/nginx/sites-available/myapp /etc/nginx/sites-enabled/
+sudo nginx -t && sudo systemctl reload nginx
+```
+
+### 第三步 — 配置 GitHub Secrets
+
+在仓库的 **Settings → Secrets and variables → Actions** 中添加以下 Secrets：
+
+| Secret | 说明 |
+|--------|------|
+| `SERVER_HOST` | 服务器 IP 或域名 |
+| `SERVER_USER` | SSH 登录用户名（如 `deploy`） |
+| `SSH_PRIVATE_KEY` | SSH 私钥的完整内容 |
+
+### 第四步 — 触发部署
+
+推送 `prod_` 前缀的 tag 即可触发部署流程：
+
+```bash
+git tag prod_v1.0.0
+git push origin prod_v1.0.0
+```
+
+流程执行顺序如下：
+
+```
+lint ──┐
+       ├─► build-server ──┐
+test ──┘                   ├─► deploy
+       └─► build-web ──────┘
+```
+
+可在 GitHub 的 **Actions** 标签页中查看实时进度。
+
+### 注意事项
+
+- **数据库安全** — `sqlite.db` 不包含在构建产物中，部署时永远不会被覆盖。每次部署只同步 `migrations/` 和 `schema.prisma`。
+- **数据库迁移** — 每次部署自动执行 `prisma migrate deploy`。首次部署时会自动创建数据库并应用全部迁移。
+- **停机时间** — 由于 SQLite 单写限制，替换二进制时服务会短暂停止（约 1~3 秒）。
+- **服务器上的 Bun** — 仅运行数据库迁移时需要。服务端二进制是自包含的，运行时无需 Bun。若服务器未安装 Bun，首次部署时会自动安装。

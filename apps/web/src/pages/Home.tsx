@@ -1,40 +1,73 @@
-import heroImg from '../assets/hero.png'
-import reactLogo from '../assets/react.svg'
+import { useEffect, useState } from 'react'
 import viteLogo from '../assets/vite.svg'
-import { useCounterStore } from '../store'
+import { useUsersStore } from '../store'
 import '../App.css'
 
 function Home() {
-  const { count, increment } = useCounterStore()
+  const { users, loading, fetchUsers, addUser } = useUsersStore()
+  const [name, setName] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+
+  useEffect(() => {
+    fetchUsers()
+  }, [fetchUsers])
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!name.trim())
+      return
+    setSubmitting(true)
+    await addUser(name.trim())
+    setName('')
+    setSubmitting(false)
+  }
 
   return (
     <>
       <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
         <div>
-          <h1>Get started</h1>
+          <h1>Users</h1>
           <p>
-            Edit
+            Data from
             {' '}
-            <code>src/App.tsx</code>
+            <code>GET /api/users</code>
             {' '}
-            and save to test
-            {' '}
-            <code>HMR</code>
+            — powered by Elysia + Prisma
           </p>
         </div>
-        <button
-          className="counter"
-          onClick={increment}
-        >
-          Count is
-          {' '}
-          {count}
-        </button>
+
+        <form onSubmit={handleSubmit} style={{ display: 'flex', gap: '8px' }}>
+          <input
+            value={name}
+            onChange={e => setName(e.target.value)}
+            placeholder="User name"
+            disabled={submitting}
+            style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #444', background: '#1a1a1a', color: 'inherit', fontSize: '1em' }}
+          />
+          <button type="submit" disabled={submitting || !name.trim()} className="counter">
+            {submitting ? 'Adding...' : 'Add user'}
+          </button>
+        </form>
+
+        {loading
+          ? <p style={{ color: '#888' }}>Loading...</p>
+          : users.length === 0
+            ? <p style={{ color: '#888' }}>No users yet. Add one above.</p>
+            : (
+                <ul style={{ listStyle: 'none', padding: 0, margin: 0, width: '100%', maxWidth: '400px' }}>
+                  {users.map(user => (
+                    <li
+                      key={user.id}
+                      style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #333' }}
+                    >
+                      <span>{user.name}</span>
+                      <span style={{ color: '#888', fontSize: '0.85em' }}>
+                        #{user.id}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
       </section>
 
       <div className="ticks"></div>
@@ -48,15 +81,14 @@ function Home() {
           <p>Your questions, answered</p>
           <ul>
             <li>
-              <a href="https://vite.dev/" target="_blank">
+              <a href="http://localhost:3000/scalar" target="_blank">
                 <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
+                API Docs
               </a>
             </li>
             <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
+              <a href="https://elysiajs.com/" target="_blank">
+                Learn Elysia
               </a>
             </li>
           </ul>
@@ -102,18 +134,6 @@ function Home() {
                   <use href="/icons.svg#x-icon"></use>
                 </svg>
                 X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
               </a>
             </li>
           </ul>

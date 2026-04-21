@@ -37,3 +37,6 @@ test-results
 # Environment
 .env
 .env.local
+
+# Generated API artifacts
+apps/web/src/services/schema.gen.ts
