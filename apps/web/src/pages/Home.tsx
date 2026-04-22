@@ -62,7 +62,8 @@ function Home() {
                     >
                       <span>{user.name}</span>
                       <span style={{ color: '#888', fontSize: '0.85em' }}>
-                        #{user.id}
+                        #
+                        {user.id}
                       </span>
                     </li>
                   ))}
