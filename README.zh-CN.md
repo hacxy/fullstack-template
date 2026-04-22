@@ -254,13 +254,14 @@ sudo nginx -t && sudo systemctl reload nginx
 
 ### 第三步 — 配置 GitHub Secrets
 
-在仓库的 **Settings → Secrets and variables → Actions** 中添加以下 Secrets：
+在仓库的 **Settings → Secrets and variables → Actions** 中添加以下配置：
 
-| Secret | 说明 |
+| 配置项 | 说明 |
 |--------|------|
-| `SERVER_HOST` | 服务器 IP 或域名 |
-| `SERVER_USER` | SSH 登录用户名（如 `deploy`） |
-| `SSH_PRIVATE_KEY` | SSH 私钥的完整内容 |
+| `SERVER_HOST`（secret） | 服务器 IP 或域名 |
+| `SERVER_USER`（secret） | SSH 登录用户名（如 `deploy`） |
+| `SSH_PRIVATE_KEY`（secret） | SSH 私钥的完整内容 |
+| `PROD_WEB_API_URL`（secret） | 生产环境 API 基础地址。部署时会写入 `apps/web/.env.production` 的 `VITE_API_URL`，并在部署完成后用于健康检查（例如 `https://api.example.com`） |
 
 ### 第四步 — 触发部署
 

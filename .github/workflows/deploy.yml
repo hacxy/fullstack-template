@@ -94,6 +94,16 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile --ignore-scripts
 
+      - name: Generate web production env
+        env:
+          PROD_WEB_API_URL: ${{ secrets.PROD_WEB_API_URL }}
+        run: |
+          if [ -z "$PROD_WEB_API_URL" ]; then
+            echo "Missing PROD_WEB_API_URL. Configure it in GitHub production environment secrets."
+            exit 1
+          fi
+          printf 'VITE_API_URL=%s\n' "$PROD_WEB_API_URL" > apps/web/.env.production
+
       - name: Build web
         run: bun --filter web build
 
@@ -191,7 +201,12 @@ jobs:
           REMOTE_SCRIPT
 
       - name: Health check
+        env:
+          PROD_WEB_API_URL: ${{ secrets.PROD_WEB_API_URL }}
         run: |
           sleep 3
-          ssh ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} \
-            'curl -sf http://localhost:3000/ || (echo "Health check failed" && exit 1)'
+          if [ -z "$PROD_WEB_API_URL" ]; then
+            echo "Missing PROD_WEB_API_URL. Configure it in GitHub production environment secrets."
+            exit 1
+          fi
+          curl -sf "$PROD_WEB_API_URL" || (echo "Health check failed: $PROD_WEB_API_URL" && exit 1)

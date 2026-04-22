@@ -254,11 +254,12 @@ sudo nginx -t && sudo systemctl reload nginx
 
 In your repository go to **Settings → Secrets and variables → Actions** and add:
 
-| Secret | Value |
-|--------|-------|
-| `SERVER_HOST` | Server IP or domain |
-| `SERVER_USER` | SSH login username (e.g. `deploy`) |
-| `SSH_PRIVATE_KEY` | Full content of the SSH private key |
+| Key | Value |
+|-----|-------|
+| `SERVER_HOST` (secret) | Server IP or domain |
+| `SERVER_USER` (secret) | SSH login username (e.g. `deploy`) |
+| `SSH_PRIVATE_KEY` (secret) | Full content of the SSH private key |
+| `PROD_WEB_API_URL` (secret) | Production API base URL injected into `apps/web/.env.production` as `VITE_API_URL` and reused by deployment health check (e.g. `https://api.example.com`) |
 
 ### Step 4 — Deploy
 
