@@ -5,6 +5,7 @@
   "private": true,
   "description": "React 19 + TypeScript + Vite 项目模板，集成路由、状态管理、代码规范与 E2E 测试",
   "scripts": {
+    "codegen": "bun scripts/generateApi.ts",
     "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
