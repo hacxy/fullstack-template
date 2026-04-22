@@ -5,6 +5,7 @@ import { Elysia } from 'elysia'
 import { userController } from './controllers/userController'
 
 export const app = new Elysia()
+  .get('/', () => ({ status: 'ok' }))
   .use(cors({ origin: process.env.CORS_ORIGIN ?? 'http://localhost:5173' }))
   .use(swagger({
     path: '/scalar',
