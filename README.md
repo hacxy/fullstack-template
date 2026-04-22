@@ -39,6 +39,15 @@ fullstack-template/
 bun install
 ```
 
+### Environment variables
+
+```bash
+cp apps/server/.env.example apps/server/.env
+cp apps/web/.env.example    apps/web/.env
+```
+
+Edit the values as needed. Bun loads `.env` automatically — no extra setup required.
+
 ### Initialize the database
 
 ```bash
@@ -202,14 +211,22 @@ The project deploys to a self-hosted Linux x64 server via GitHub Actions. Pushin
 
 ### Step 1 — First-time server setup
 
-Run `scripts/server-setup.sh` once on your server (requires sudo):
+Run `scripts/server-setup.sh` once on your server (requires sudo). The script supports both interactive and non-interactive modes:
 
 ```bash
-# Usage: bash server-setup.sh [deploy_user] [deploy_pubkey]
-bash scripts/server-setup.sh deploy "ssh-ed25519 AAAA... github-actions"
+# Interactive mode (recommended for first-timers)
+sudo bash scripts/server-setup.sh
+
+# Non-interactive mode
+# Usage: sudo bash server-setup.sh [deploy_user] [deploy_pubkey] [cors_origin]
+sudo bash scripts/server-setup.sh deploy "ssh-ed25519 AAAA... github-actions" "https://example.com"
 ```
 
-This creates the `myapp` service user, directory structure, systemd service, and sudo permissions for the deploy user.
+The script will:
+- Prompt for deploy username, SSH public key, and your production CORS origin
+- Create the `myapp` service user and required directories
+- Configure SSH access and sudo permissions for the deploy user
+- Register and enable the `myapp-server` systemd service with correct environment variables
 
 **Expected directory layout after setup:**
 
@@ -228,6 +245,7 @@ Copy `scripts/nginx-myapp.conf` to your server, update `server_name`, then enabl
 
 ```bash
 sudo cp nginx-myapp.conf /etc/nginx/sites-available/myapp
+# Edit server_name to your domain
 sudo ln -s /etc/nginx/sites-available/myapp /etc/nginx/sites-enabled/
 sudo nginx -t && sudo systemctl reload nginx
 ```
