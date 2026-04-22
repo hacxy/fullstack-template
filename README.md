@@ -9,7 +9,7 @@ A monorepo fullstack template based on Bun workspaces, including a backend API s
 | Layer | Technology |
 |-------|------------|
 | Runtime | [Bun](https://bun.sh/) |
-| Backend | [Elysia](https://elysiajs.com/) + [Prisma](https://www.prisma.io/) + SQLite |
+| Backend | [Elysia](https://elysiajs.com/) + [Drizzle ORM](https://orm.drizzle.team/) + SQLite |
 | Frontend | [React 19](https://react.dev/) + [Vite](https://vitejs.dev/) + [React Router](https://reactrouter.com/) |
 | State Management | [Zustand](https://zustand-demo.pmnd.rs/) |
 | Shared Package | TypeScript types and utilities |
@@ -63,25 +63,23 @@ A high-performance REST API server built with [Elysia](https://elysiajs.com/) on
 
 ```
 apps/server/
-├── prisma/
-│   ├── schema.prisma    # Data models
-│   ├── migrations/      # SQL migration history (committed to VCS)
-│   └── sqlite.db        # Local database file (git-ignored)
-└── src/
-    ├── db/              # Prisma client instance
-    ├── models/          # Elysia request/response type models
-    ├── controllers/     # Thin request handlers, delegate to services
-    ├── services/        # Business logic
-    │   └── __tests__/   # Unit tests
-    ├── routes/          # Route definitions and handler wiring
-    └── index.ts         # Entry point — port 3000, Swagger at /scalar
+├── drizzle/             # SQL migration files (committed to VCS)
+│   └── meta/            # Migration journal and snapshots
+├── src/
+│   ├── db/              # Drizzle client instance and schema
+│   ├── models/          # Elysia request/response type models
+│   ├── controllers/     # Thin request handlers, delegate to services
+│   ├── services/        # Business logic
+│   └── index.ts         # Entry point — runs migrations then starts on port 3000
+└── sqlite.db            # Local database file (git-ignored)
 ```
 
 ### Key Features
 
 - **Elysia** — fast, type-safe web framework with end-to-end type inference
-- **Prisma** — type-safe ORM with automatic migrations
-- **SQLite** via `better-sqlite3` — zero-config local database
+- **Drizzle ORM** — type-safe SQL with schema-first migrations
+- **SQLite** via `@libsql/client` — zero-config local database
+- **Auto-migration** — `migrate()` runs on every server startup; safe to run repeatedly
 - **Swagger / Scalar UI** — auto-generated API docs at `/scalar`
 - **Hot reload** — `bun --watch` restarts on file changes
 
@@ -91,15 +89,18 @@ Run from the repo root:
 
 | Script | Description |
 |--------|-------------|
-| `bun db:migrate` | Create a new migration and apply it |
-| `bun db:generate` | Regenerate the Prisma client after schema changes |
-| `bun db:studio` | Open Prisma Studio (GUI for the database) |
-| `bun db:reset` | Drop all data and re-run all migrations |
+| `bun db:generate` | Generate a new SQL migration from schema changes |
+| `bun db:migrate` | Apply pending migrations to the local database |
+| `bun db:push` | Push schema changes directly (dev only, bypasses migrations) |
+| `bun db:studio` | Open Drizzle Studio (GUI for the database) |
+
+> **Schema change workflow:** Edit `apps/server/src/db/schema.ts` → run `bun db:generate` → commit the new file in `apps/server/drizzle/` → run `bun db:migrate`.
 
 ### API Endpoints
 
 | Method | Path | Description |
 |--------|------|-------------|
+| GET | `/` | Health check — returns `{ "status": "ok" }` |
 | GET | `/api/users` | List all users |
 | POST | `/api/users` | Create a new user |
 
@@ -216,10 +217,8 @@ This creates the `myapp` service user, directory structure, systemd service, and
 /opt/myapp/
 ├── server/
 │   ├── bin/server          # self-contained binary (replaced on each deploy)
-│   └── prisma/
-│       ├── sqlite.db       # database file (never overwritten by deploys)
-│       ├── schema.prisma
-│       └── migrations/
+│   ├── drizzle/            # SQL migration files (synced on each deploy)
+│   └── sqlite.db           # database file (never overwritten by deploys)
 └── web/                    # frontend static files
 ```
 
@@ -265,7 +264,8 @@ You can monitor progress in the **Actions** tab on GitHub.
 
 ### Notes
 
-- **Database safety** — `sqlite.db` is never included in build artifacts and is never overwritten during deployment. Only `migrations/` and `schema.prisma` are synced.
-- **Database migrations** — `prisma migrate deploy` runs automatically on each deploy. On first deploy it creates the database and applies all migrations.
+- **Database safety** — `sqlite.db` is never included in build artifacts and is never overwritten during deployment. Only the `drizzle/` migration files are synced.
+- **Auto-migration** — The server binary runs `migrate()` on startup. On first deploy it creates the database and applies all migrations; on subsequent deploys it only applies new ones. No manual migration step needed.
+- **No Bun on server** — The server binary is self-contained and handles its own migrations. Bun is not required on the production server.
 - **Downtime** — Due to SQLite's single-writer constraint, the service stops briefly (~1–3 s) while the binary is replaced.
-- **Bun on server** — Only needed for running migrations. The server binary is self-contained and does not require Bun to run. The setup script installs Bun automatically on first deploy if not present.
+- **CORS origin** — Set during `server-setup.sh`. To change it later, edit the `CORS_ORIGIN` line in `/etc/systemd/system/myapp-server.service` and run `sudo systemctl daemon-reload && sudo systemctl restart myapp-server`.
