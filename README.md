@@ -243,10 +243,20 @@ The script will:
 
 Copy `scripts/nginx-myapp.conf` to your server, update `server_name`, then enable it:
 
+**Debian / Ubuntu** (uses `sites-available` + symlink):
+
 ```bash
 sudo cp nginx-myapp.conf /etc/nginx/sites-available/myapp
 # Edit server_name to your domain
 sudo ln -s /etc/nginx/sites-available/myapp /etc/nginx/sites-enabled/
+sudo nginx -t && sudo systemctl reload nginx
+```
+
+**RHEL / CentOS / Amazon Linux** (uses `conf.d`, no symlink needed):
+
+```bash
+sudo cp nginx-myapp.conf /etc/nginx/conf.d/myapp.conf
+# Edit server_name to your domain
 sudo nginx -t && sudo systemctl reload nginx
 ```
 

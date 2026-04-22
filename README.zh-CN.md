@@ -245,10 +245,20 @@ sudo bash scripts/server-setup.sh deploy "ssh-ed25519 AAAA... github-actions" "h
 
 将 `scripts/nginx-myapp.conf` 复制到服务器，修改其中的 `server_name`，然后启用：
 
+**Debian / Ubuntu**（使用 `sites-available` + 软链接）：
+
 ```bash
 sudo cp nginx-myapp.conf /etc/nginx/sites-available/myapp
 # 编辑 server_name 为你的域名
 sudo ln -s /etc/nginx/sites-available/myapp /etc/nginx/sites-enabled/
+sudo nginx -t && sudo systemctl reload nginx
+```
+
+**RHEL / CentOS / Amazon Linux**（使用 `conf.d`，无需软链接）：
+
+```bash
+sudo cp nginx-myapp.conf /etc/nginx/conf.d/myapp.conf
+# 编辑 server_name 为你的域名
 sudo nginx -t && sudo systemctl reload nginx
 ```
 
