@@ -16,7 +16,7 @@
     "coverage:report": "nyc report --reporter=html --reporter=lcov --reporter=text"
   },
   "dependencies": {
-    "ky": "^2.0.2",
+    "openapi-fetch": "^0.17.0",
     "react": "^19.2.5",
     "react-dom": "^19.2.5",
     "react-router": "^7.14.1",

@@ -1,6 +1,8 @@
-import type { User } from '../services'
-import { userApi } from '../services'
+import type { components } from '../services'
+import { client } from '../services'
 import { createStore } from './createStore'
+
+type User = components['schemas']['user.item']
 
 interface UsersStore {
   users: User[]
@@ -14,11 +16,15 @@ export const useUsersStore = createStore<UsersStore>('UsersStore', set => ({
   loading: false,
   fetchUsers: async () => {
     set({ loading: true })
-    const users = await userApi.getAll()
-    set({ users, loading: false })
+    const { data, error } = await client.GET('/api/users/')
+    if (error)
+      throw error
+    set({ users: data, loading: false })
   },
   addUser: async (name) => {
-    const user = await userApi.create({ name })
-    set(state => ({ users: [...state.users, user] }))
+    const { data, error } = await client.POST('/api/users/', { body: { name } })
+    if (error)
+      throw error
+    set(state => ({ users: [...state.users, data] }))
   },
 }))
