@@ -1,14 +1,12 @@
 import { beforeEach, describe, expect, it, mock } from 'bun:test'
 
-const mockFindMany = mock()
-const mockCreate = mock()
+const mockFrom = mock()
+const mockReturning = mock()
 
-mock.module('../../src/_db', () => ({
+mock.module('../../src/db', () => ({
   db: {
-    user: {
-      findMany: mockFindMany,
-      create: mockCreate,
-    },
+    select: () => ({ from: mockFrom }),
+    insert: () => ({ values: () => ({ returning: mockReturning }) }),
   },
 }))
 
@@ -21,12 +19,12 @@ const mockUsers = [
 
 describe('GET /api/users', () => {
   beforeEach(() => {
-    mockFindMany.mockReset()
-    mockCreate.mockReset()
+    mockFrom.mockReset()
+    mockReturning.mockReset()
   })
 
   it('returns 200 with user list', async () => {
-    mockFindMany.mockResolvedValue(mockUsers)
+    mockFrom.mockResolvedValue(mockUsers)
 
     const res = await userController.handle(
       new Request('http://localhost/api/users'),
@@ -39,7 +37,7 @@ describe('GET /api/users', () => {
   })
 
   it('returns 200 with empty array when no users', async () => {
-    mockFindMany.mockResolvedValue([])
+    mockFrom.mockResolvedValue([])
 
     const res = await userController.handle(
       new Request('http://localhost/api/users'),
@@ -53,13 +51,13 @@ describe('GET /api/users', () => {
 
 describe('POST /api/users', () => {
   beforeEach(() => {
-    mockFindMany.mockReset()
-    mockCreate.mockReset()
+    mockFrom.mockReset()
+    mockReturning.mockReset()
   })
 
   it('creates a user and returns 200', async () => {
     const created = { id: 3, name: 'Charlie', createdAt: new Date() }
-    mockCreate.mockResolvedValue(created)
+    mockReturning.mockResolvedValue([created])
 
     const res = await userController.handle(
       new Request('http://localhost/api/users', {

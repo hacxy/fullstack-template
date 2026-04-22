@@ -1,14 +1,12 @@
 import { beforeEach, describe, expect, it, mock } from 'bun:test'
 
-const mockFindMany = mock()
-const mockCreate = mock()
+const mockFrom = mock()
+const mockReturning = mock()
 
-mock.module('../../src/_db', () => ({
+mock.module('../../src/db', () => ({
   db: {
-    user: {
-      findMany: mockFindMany,
-      create: mockCreate,
-    },
+    select: () => ({ from: mockFrom }),
+    insert: () => ({ values: () => ({ returning: mockReturning }) }),
   },
 }))
 
@@ -21,22 +19,22 @@ const mockUsers = [
 
 describe('UserService', () => {
   beforeEach(() => {
-    mockFindMany.mockReset()
-    mockCreate.mockReset()
+    mockFrom.mockReset()
+    mockReturning.mockReset()
   })
 
   describe('findAll', () => {
     it('returns all users from db', async () => {
-      mockFindMany.mockResolvedValue(mockUsers)
+      mockFrom.mockResolvedValue(mockUsers)
 
       const result = await UserService.findAll()
 
-      expect(mockFindMany).toHaveBeenCalledTimes(1)
+      expect(mockFrom).toHaveBeenCalledTimes(1)
       expect(result).toEqual(mockUsers)
     })
 
     it('returns empty array when no users exist', async () => {
-      mockFindMany.mockResolvedValue([])
+      mockFrom.mockResolvedValue([])
 
       const result = await UserService.findAll()
 
@@ -47,11 +45,11 @@ describe('UserService', () => {
   describe('create', () => {
     it('creates a user with given name', async () => {
       const newUser = { id: 3, name: 'Charlie', createdAt: new Date() }
-      mockCreate.mockResolvedValue(newUser)
+      mockReturning.mockResolvedValue([newUser])
 
       const result = await UserService.create({ name: 'Charlie' })
 
-      expect(mockCreate).toHaveBeenCalledWith({ data: { name: 'Charlie' } })
+      expect(mockReturning).toHaveBeenCalledTimes(1)
       expect(result).toEqual(newUser)
     })
   })
