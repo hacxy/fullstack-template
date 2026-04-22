@@ -9,7 +9,7 @@
 | 层级 | 技术 |
 |------|------|
 | 运行时 | [Bun](https://bun.sh/) |
-| 后端 | [Elysia](https://elysiajs.com/) + [Prisma](https://www.prisma.io/) + SQLite |
+| 后端 | [Elysia](https://elysiajs.com/) + [Drizzle ORM](https://orm.drizzle.team/) + SQLite |
 | 前端 | [React 19](https://react.dev/) + [Vite](https://vitejs.dev/) + [React Router](https://reactrouter.com/) |
 | 状态管理 | [Zustand](https://zustand-demo.pmnd.rs/) |
 | 共享包 | TypeScript 类型与工具函数 |
@@ -63,25 +63,23 @@ bun dev
 
 ```
 apps/server/
-├── prisma/
-│   ├── schema.prisma    # 数据模型定义
-│   ├── migrations/      # SQL 迁移历史（需提交到版本控制）
-│   └── sqlite.db        # 本地数据库文件（已 git-ignore）
-└── src/
-    ├── db/              # Prisma 客户端实例
-    ├── models/          # Elysia 请求/响应类型模型
-    ├── controllers/     # 请求处理器（薄层，委托给 service）
-    ├── services/        # 业务逻辑
-    │   └── __tests__/   # 单元测试
-    ├── routes/          # 路由定义与处理器绑定
-    └── index.ts         # 入口——端口 3000，Swagger 在 /scalar
+├── drizzle/             # SQL 迁移文件（需提交到版本控制）
+│   └── meta/            # 迁移日志与快照
+├── src/
+│   ├── db/              # Drizzle 客户端实例与 schema 定义
+│   ├── models/          # Elysia 请求/响应类型模型
+│   ├── controllers/     # 请求处理器（薄层，委托给 service）
+│   ├── services/        # 业务逻辑
+│   └── index.ts         # 入口——执行迁移后启动服务，端口 3000
+└── sqlite.db            # 本地数据库文件（已 git-ignore）
 ```
 
 ### 核心特性
 
 - **Elysia** — 快速、类型安全的 Web 框架，支持端到端类型推导
-- **Prisma** — 类型安全的 ORM，支持自动迁移
-- **SQLite** via `better-sqlite3` — 零配置本地数据库
+- **Drizzle ORM** — 类型安全的 SQL，schema 优先的迁移管理
+- **SQLite** via `@libsql/client` — 零配置本地数据库
+- **自动迁移** — `migrate()` 在每次服务器启动时执行，可重复运行且幂等
 - **Swagger / Scalar UI** — 在 `/scalar` 自动生成 API 文档
 - **热重载** — `bun --watch` 文件变更时自动重启
 
@@ -91,15 +89,18 @@ apps/server/
 
 | 脚本 | 说明 |
 |------|------|
-| `bun db:migrate` | 创建新迁移并应用 |
-| `bun db:generate` | 修改 schema 后重新生成 Prisma 客户端 |
-| `bun db:studio` | 打开 Prisma Studio（数据库可视化工具） |
-| `bun db:reset` | 清空数据并重新执行所有迁移 |
+| `bun db:generate` | 根据 schema 变更生成新的 SQL 迁移文件 |
+| `bun db:migrate` | 将待执行的迁移应用到本地数据库 |
+| `bun db:push` | 直接同步 schema（仅开发用，不记录迁移历史） |
+| `bun db:studio` | 打开 Drizzle Studio（数据库可视化工具） |
+
+> **Schema 变更工作流：** 修改 `apps/server/src/db/schema.ts` → 执行 `bun db:generate` → 将 `apps/server/drizzle/` 下的新文件提交到 Git → 执行 `bun db:migrate`。
 
 ### API 端点
 
 | 方法 | 路径 | 说明 |
 |------|------|------|
+| GET | `/` | 健康检查——返回 `{ "status": "ok" }` |
 | GET | `/api/users` | 获取所有用户 |
 | POST | `/api/users` | 创建新用户 |
 
@@ -218,10 +219,8 @@ bash scripts/server-setup.sh deploy "ssh-ed25519 AAAA... github-actions"
 /opt/myapp/
 ├── server/
 │   ├── bin/server          # 自包含二进制（每次部署替换）
-│   └── prisma/
-│       ├── sqlite.db       # 数据库文件（部署时永不覆盖）
-│       ├── schema.prisma
-│       └── migrations/
+│   ├── drizzle/            # SQL 迁移文件（每次部署同步）
+│   └── sqlite.db           # 数据库文件（部署时永不覆盖）
 └── web/                    # 前端静态文件
 ```
 
@@ -267,7 +266,8 @@ test ──┘                   ├─► deploy
 
 ### 注意事项
 
-- **数据库安全** — `sqlite.db` 不包含在构建产物中，部署时永远不会被覆盖。每次部署只同步 `migrations/` 和 `schema.prisma`。
-- **数据库迁移** — 每次部署自动执行 `prisma migrate deploy`。首次部署时会自动创建数据库并应用全部迁移。
+- **数据库安全** — `sqlite.db` 不包含在构建产物中，部署时永远不会被覆盖。每次部署只同步 `drizzle/` 迁移文件。
+- **自动迁移** — 服务端二进制启动时自动执行 `migrate()`。首次部署自动创建数据库并应用全部迁移；后续部署只应用新增迁移。无需手动执行任何迁移命令。
+- **无需服务器上的 Bun** — 服务端二进制自包含，内嵌迁移逻辑，生产服务器上不需要安装 Bun。
 - **停机时间** — 由于 SQLite 单写限制，替换二进制时服务会短暂停止（约 1~3 秒）。
-- **服务器上的 Bun** — 仅运行数据库迁移时需要。服务端二进制是自包含的，运行时无需 Bun。若服务器未安装 Bun，首次部署时会自动安装。
+- **修改 CORS 来源** — 在 `server-setup.sh` 交互步骤中设置。如需修改，编辑 `/etc/systemd/system/myapp-server.service` 中的 `CORS_ORIGIN` 行，然后执行 `sudo systemctl daemon-reload && sudo systemctl restart myapp-server`。
