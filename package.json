@@ -13,9 +13,9 @@
     "lint:fix": "bun --filter '*' lint:fix",
     "prepare": "husky",
     "db:generate": "bun --filter server db:generate",
-    "db:migrate": "cd apps/server && bun run db:migrate",
+    "db:migrate": "bun --filter server db:migrate",
+    "db:push": "bun --filter server db:push",
     "db:studio": "bun --filter server db:studio",
-    "db:reset": "cd apps/server && bun run db:reset",
     "test": "bun --filter web test:e2e && bun --filter server test",
     "coverage:report": "bun --filter '*' coverage:report"
   },

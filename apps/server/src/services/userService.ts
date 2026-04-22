@@ -1,11 +1,13 @@
-import { db } from '../_db'
+import { db } from '../db'
+import { users } from '../db/schema'
 
 export class UserService {
   static findAll() {
-    return db.user.findMany()
+    return db.select().from(users)
   }
 
-  static create(data: { name: string }) {
-    return db.user.create({ data })
+  static async create(data: { name: string }) {
+    const rows = await db.insert(users).values(data).returning()
+    return rows[0]
   }
 }
