@@ -1,0 +1,13 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1776837471947,
+      "tag": "0000_thin_rattler",
+      "breakpoints": true
+    }
+  ]
+}
