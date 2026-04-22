@@ -50,7 +50,7 @@ jobs:
         run: cd apps/server && bun run build:linux-x64
 
       - name: Build web
-        run: cd apps/web && bun run codegen && bun run build
+        run: cd apps/web && bun run build
 
   test-server:
     name: Server Tests
