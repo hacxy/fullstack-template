@@ -39,6 +39,15 @@ fullstack-template/
 bun install
 ```
 
+### 配置环境变量
+
+```bash
+cp apps/server/.env.example apps/server/.env
+cp apps/web/.env.example    apps/web/.env
+```
+
+按需修改其中的值。Bun 会自动加载 `.env` 文件，无需额外配置。
+
 ### 初始化数据库
 
 ```bash
@@ -204,14 +213,22 @@ chore: 更新依赖版本
 
 ### 第一步 — 首次服务器初始化
 
-在服务器上执行一次 `scripts/server-setup.sh`（需要 sudo 权限）：
+在服务器上执行一次 `scripts/server-setup.sh`（需要 sudo 权限）。脚本支持**交互模式**和**非交互模式**：
 
 ```bash
-# 用法: bash server-setup.sh [部署用户名] [SSH 公钥]
-bash scripts/server-setup.sh deploy "ssh-ed25519 AAAA... github-actions"
+# 交互模式（推荐，会逐步引导输入配置）
+sudo bash scripts/server-setup.sh
+
+# 非交互模式
+# 用法: sudo bash server-setup.sh [部署用户名] [SSH 公钥] [CORS 来源]
+sudo bash scripts/server-setup.sh deploy "ssh-ed25519 AAAA... github-actions" "https://example.com"
 ```
 
-此脚本会创建 `myapp` 服务用户、目录结构、systemd service 文件，以及部署用户的 sudo 权限。
+脚本将自动完成：
+- 询问部署用户名、SSH 公钥、生产环境 CORS 域名
+- 创建 `myapp` 服务用户和所需目录
+- 配置 SSH 访问和部署用户的 sudo 权限
+- 注册并启用 `myapp-server` systemd 服务，并写入正确的环境变量
 
 **初始化后的目录结构：**
 
@@ -230,6 +247,7 @@ bash scripts/server-setup.sh deploy "ssh-ed25519 AAAA... github-actions"
 
 ```bash
 sudo cp nginx-myapp.conf /etc/nginx/sites-available/myapp
+# 编辑 server_name 为你的域名
 sudo ln -s /etc/nginx/sites-available/myapp /etc/nginx/sites-enabled/
 sudo nginx -t && sudo systemctl reload nginx
 ```
