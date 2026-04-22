@@ -1,10 +1,11 @@
+import process from 'node:process'
 import { cors } from '@elysiajs/cors'
 import { swagger } from '@elysiajs/swagger'
 import { Elysia } from 'elysia'
 import { userController } from './controllers/userController'
 
 export const app = new Elysia()
-  .use(cors({ origin: 'http://localhost:5173' }))
+  .use(cors({ origin: process.env.CORS_ORIGIN ?? 'http://localhost:5173' }))
   .use(swagger({
     path: '/scalar',
     documentation: {
