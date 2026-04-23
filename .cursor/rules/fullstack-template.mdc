@@ -9,7 +9,7 @@ alwaysApply: true
 
 ## 适用范围
 
-- 本规则适用于仓库全部目录，优先约束 `apps/web`、`apps/server`、`packages/shared`。
+- 本规则适用于仓库全部目录，优先约束 `apps/web`、`apps/server`、`packages/*`。
 - 默认使用 Bun 工作区能力执行命令，不切换到其他包管理器工作流。
 
 ## 必须遵守
@@ -33,6 +33,7 @@ alwaysApply: true
 - `apps/web`：目录 kebab-case；组件文件 PascalCase；普通 TS/TSX 文件 camelCase；资源文件 kebab-case。
 - `apps/server`：目录与源文件 camelCase，并使用领域前缀（如 `userController.ts`、`userService.ts`）；测试文件使用 `*.test.ts`。
 - `packages/shared` 仅放跨端复用类型与工具，避免耦合前后端运行时细节。
+- `packages/elysia-plugin-response` 承载统一响应协议（runtime plugin + contract + schema builder），优先在 server 侧复用，不在业务代码重复实现。
 
 ## 前端约束（apps/web）
 
@@ -48,6 +49,9 @@ alwaysApply: true
 ## 后端约束（apps/server）
 
 - Controller 同时承担路由定义与处理器绑定，不新增独立 routes 层。
+- HTTP 响应统一为 `{ code, msg, data }` envelope：成功 `code=0,msg='ok'`，错误 `code!=0,data=null`。
+- 统一响应封装通过 `elysia-plugin-response` 的 `response()` 处理；controller/service 返回领域数据与异常语义，不手工重复包裹。
+- model 声明层默认使用 `elysia-plugin-response` 内置的 `responseContract`（或同配置 contract），避免每个 model 重复初始化。
 - Elysia model key 使用 `domain.purpose` 命名（如 `user.create`、`user.item`）。
 - Service 使用静态类方法，不进行 service 实例化。
 - 数据表与推导类型统一定义在 `src/db/schema.ts`，禁止手写重复的实体类型。

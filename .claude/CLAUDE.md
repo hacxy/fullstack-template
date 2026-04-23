@@ -107,6 +107,8 @@ packages/
 **Backend**
 
 - Elysia controller 同时承担路由定义和处理器绑定职责（无独立 routes 层），使用 `new Elysia({ prefix: '/api/...' })` 定义前缀
+- HTTP 返回体统一使用 `{ code, msg, data }` 协议：成功响应固定 `code=0,msg='ok'`，错误响应 `code!=0,data=null`
+- 统一响应协议通过 Elysia plugin 集中处理；controller/service 保持返回领域数据与抛错语义，不重复手工包裹
 - Elysia model key 遵循 `domain.purpose` 命名（如 `user.create`、`user.item`、`user.list`），在 `models/` 目录下声明后通过 `.use(Model)` 注入
 - Service 层使用 `static` 类方法（`UserService.findAll()`），不实例化
 - Drizzle 表定义在 `src/db/schema.ts`，通过 `$inferSelect` / `$inferInsert` 导出 TypeScript 类型，**禁止手写重复类型**

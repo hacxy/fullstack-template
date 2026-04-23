@@ -31,7 +31,18 @@ src/
     userController.ts  # 路由前缀 + handler 绑定（委托给 service）
   services/
     userService.ts     # 业务逻辑（static 类方法）
+packages/
+  elysia-plugin-response/
+    src/               # 统一响应协议（{ code, msg, data }）封装、错误映射、schema 构造
 ```
+
+## 统一响应协议
+
+- 所有 HTTP 响应统一为 `{ code, msg, data }`。
+- 成功响应固定为 `code = 0`、`msg = 'ok'`，`data` 为领域数据。
+- 错误响应统一由 `elysia-plugin-response` 的 `response()` 映射为非 0 业务码，`data = null`。
+- Controller/Service 不重复手工包裹 envelope，保持“薄 controller + 领域 service”职责。
+- Model 声明层优先复用 `elysia-plugin-response` 内置 `responseContract`，避免每个 model 重复创建 contract。
 
 ## Rules 文件
 

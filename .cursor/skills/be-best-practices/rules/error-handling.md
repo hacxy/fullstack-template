@@ -8,6 +8,50 @@
 
 ## 规则
 
+### 全局错误统一映射为 envelope
+
+错误响应统一由 plugin 映射为 `{ code, msg, data }`，其中 `code != 0` 且 `data = null`。Controller/Service 只需抛错或返回领域数据，不重复手工封装。
+
+**✅ 正确写法：**
+```ts
+// app.ts 中注册统一响应 plugin
+import { response } from 'elysia-plugin-response'
+
+export const app = new Elysia()
+  .use(response())
+  .use(userController)
+
+// plugin 内统一映射错误
+.onError(({ code, error, set }) => {
+  set.status = 422
+  return { code: 1001, msg: error.message, data: null }
+})
+```
+
+**❌ 错误写法：**
+```ts
+// 在 controller 中手工构造错误 envelope（重复职责）
+.post('/', async ({ body }) => {
+  try {
+    return await UserService.create(body)
+  } catch {
+    return { code: 1500, msg: 'failed', data: null }
+  }
+})
+
+// service 吞错并返回“假成功”结构
+static async create(data: { name: string }) {
+  try {
+    const rows = await db.insert(users).values(data).returning()
+    return { code: 0, msg: 'ok', data: rows[0] }
+  } catch {
+    return { code: 1500, msg: 'failed', data: null }
+  }
+}
+```
+
+---
+
 ### 参数校验在 Model 中声明
 
 不在 controller/service 中手动校验请求体，将所有输入约束声明在 Elysia model 中，由框架自动返回 422。

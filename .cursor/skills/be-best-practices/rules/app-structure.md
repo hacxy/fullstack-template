@@ -52,13 +52,16 @@ app.listen(3000)  // 生产环境首次启动会缺少表结构
 
 ### app.ts 职责
 
-使用链式调用组装 cors → swagger → controllers，导出 `app` 实例和 `App` 类型。
+使用链式调用组装 cors → response plugin → swagger → controllers，导出 `app` 实例和 `App` 类型。
 
 **✅ 正确写法：**
 ```ts
 // 来自 src/app.ts — 链式组装
+import { response } from 'elysia-plugin-response'
+
 export const app = new Elysia()
   .use(cors({ origin: process.env.CORS_ORIGIN ?? 'http://localhost:5173' }))
+  .use(response())
   .get('/', () => ({ status: 'ok' }))
   .use(swagger({ path: '/scalar', documentation: { ... } }))
   .use(userController)
@@ -69,6 +72,7 @@ export type App = typeof app
 // 新增 controller 时追加
 export const app = new Elysia()
   .use(cors(...))
+  .use(response())
   .use(swagger(...))
   .use(userController)
   .use(postController)  // 追加在末尾

@@ -12,6 +12,7 @@ user-invocable: false
 - React Router 7（createBrowserRouter 配置式路由）
 - Zustand 5（自定义 createStore 工厂函数 + devtools 中间件）
 - openapi-fetch 0.17.0（类型安全 API 客户端，类型从 schema.gen.ts 自动生成）
+- 后端响应协议由 `elysia-plugin-response` 统一输出 `{ code, msg, data }`，前端通过 service/store 层统一解包与报错处理
 - Playwright（E2E 测试，带 nyc + vite-plugin-istanbul 覆盖率）
 - @antfu/eslint-config（含 verbatimModuleSyntax 约束）
 - 纯 CSS + 行内样式（无 Tailwind、无 CSS-in-JS、无组件库）
