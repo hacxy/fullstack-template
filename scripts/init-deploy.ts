@@ -215,7 +215,7 @@ SyslogIdentifier=${serviceName}
 WantedBy=multi-user.target
 `
 
-  const sudoersContent = `${config.deployUser} ALL=(ALL) NOPASSWD: /bin/systemctl start ${serviceName}, /bin/systemctl stop ${serviceName}, /bin/systemctl status ${serviceName}\n`
+  const sudoersContent = `${config.deployUser} ALL=(ALL) NOPASSWD: /usr/bin/systemctl start ${serviceName}, /usr/bin/systemctl stop ${serviceName}, /usr/bin/systemctl status ${serviceName} *\n`
 
   return `#!/usr/bin/env bash
 set -euo pipefail
