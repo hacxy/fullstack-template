@@ -312,7 +312,7 @@ function buildNginxScript(config: Config): string {
 set -euo pipefail
 
 # 根据发行版选择 nginx 配置路径
-if [ -f /etc/debian_version ] || grep -qi 'debian\\|ubuntu' /etc/os-release 2>/dev/null; then
+if [ -f /etc/debian_version ] || grep -qiE 'debian|ubuntu' /etc/os-release 2>/dev/null; then
   mkdir -p /etc/nginx/sites-available /etc/nginx/sites-enabled
   CONF_PATH="/etc/nginx/sites-available/${config.nginxConfName}"
   USE_SYMLINK=1

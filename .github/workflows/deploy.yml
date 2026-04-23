@@ -158,7 +158,7 @@ jobs:
 
       - name: Upload web assets
         run: |
-          rsync -avz --delete \
+          rsync -avz --no-owner --no-group --delete \
             ./artifacts/web/ \
             ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/opt/fullstack-template/web/
 
@@ -167,8 +167,8 @@ jobs:
           chmod +x ./artifacts/server-binary/server
           scp ./artifacts/server-binary/server \
             ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/opt/fullstack-template/server/bin/server.new
-          rsync -avz --delete ./artifacts/server-drizzle/ \
-            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/opt/fullstack-template/server/bin/drizzle/
+          rsync -avz --no-owner --no-group --delete ./artifacts/server-drizzle/ \
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/opt/fullstack-template/server/drizzle/
 
       - name: Execute remote deployment
         run: |
@@ -189,7 +189,7 @@ jobs:
             echo "==> [3/3] 启动服务（含数据库迁移）..."
             # 检查 service 文件是否存在（首次部署需先执行 scripts/server-setup.sh）
             if [ ! -f /etc/systemd/system/fullstack-template-server.service ]; then
-              echo "ERROR: systemd service 'fullstack-template-server' 不存在，请先在服务器上执行 scripts/server-setup.sh"
+              echo "ERROR: systemd service 'fullstack-template-server' 不存在，请先在本地执行 bun run setup"
               exit 1
             fi
             sudo systemctl start fullstack-template-server

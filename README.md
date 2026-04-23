@@ -224,7 +224,8 @@ The script will prompt for your server address, SSH key path, domain, and other 
 ```
 /opt/{project}/
 ├── server/
-│   ├── server              # self-contained binary (replaced on each deploy)
+│   ├── bin/
+│   │   └── server          # self-contained binary (replaced on each deploy)
 │   ├── drizzle/            # SQL migration files (synced on each deploy)
 │   └── sqlite.db           # database file (never overwritten by deploys)
 └── web/                    # frontend static files

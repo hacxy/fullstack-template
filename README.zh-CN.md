@@ -226,7 +226,8 @@ bun run setup
 ```
 /opt/{project}/
 ├── server/
-│   ├── server              # 自包含二进制（每次部署替换）
+│   ├── bin/
+│   │   └── server          # 自包含二进制（每次部署替换）
 │   ├── drizzle/            # SQL 迁移文件（每次部署同步）
 │   └── sqlite.db           # 数据库文件（部署时永不覆盖）
 └── web/                    # 前端静态文件
