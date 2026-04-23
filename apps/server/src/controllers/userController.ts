@@ -1,6 +1,6 @@
 import { Elysia } from 'elysia'
-import { UserModel } from '../models/userModel'
-import { UserService } from '../services/userService'
+import { UserModel } from '../models/userModel.js'
+import { UserService } from '../services/userService.js'
 
 export const userController = new Elysia({ prefix: '/api/users' })
   .use(UserModel)

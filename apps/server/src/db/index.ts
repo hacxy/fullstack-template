@@ -1,7 +1,7 @@
 import process from 'node:process'
 import { Database } from 'bun:sqlite'
 import { drizzle } from 'drizzle-orm/bun-sqlite'
-import * as schema from './schema'
+import * as schema from './schema.js'
 
 const dbPath = (process.env.DATABASE_URL ?? 'file:./sqlite.db').replace(/^file:/, '')
 const sqlite = new Database(dbPath)

@@ -1,5 +1,5 @@
-import { db } from '../db'
-import { users } from '../db/schema'
+import { db } from '../db/index.js'
+import { users } from '../db/schema.js'
 
 export class UserService {
   static findAll() {
