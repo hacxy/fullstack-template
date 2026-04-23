@@ -8,7 +8,6 @@
         "@antfu/eslint-config": "^8.2.0",
         "@commitlint/cli": "^20.5.0",
         "@commitlint/config-conventional": "^20.5.0",
-        "bun-types": "latest",
         "eslint": "^10.2.1",
         "husky": "^9.1.7",
         "lint-staged": "^16.1.2",
