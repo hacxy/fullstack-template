@@ -66,17 +66,18 @@ jobs:
       - name: Build server binary (Linux x64)
         run: bun --filter server build:linux-x64
 
-      - name: Stage server artifacts
-        run: |
-          mkdir -p ./server-staging
-          cp apps/server/dist/server ./server-staging/server
-          cp -r apps/server/dist/drizzle ./server-staging/drizzle
-
-      - name: Upload server artifact
+      - name: Upload server binary
         uses: actions/upload-artifact@v4
         with:
           name: server-binary
-          path: ./server-staging/
+          path: apps/server/server
+          retention-days: 1
+
+      - name: Upload migrations
+        uses: actions/upload-artifact@v4
+        with:
+          name: server-drizzle
+          path: apps/server/drizzle/
           retention-days: 1
 
   build-web:
@@ -120,11 +121,17 @@ jobs:
     environment: production
 
     steps:
-      - name: Download server artifact
+      - name: Download server binary
         uses: actions/download-artifact@v4
         with:
           name: server-binary
-          path: ./artifacts/server
+          path: ./artifacts/server-binary
+
+      - name: Download migrations
+        uses: actions/download-artifact@v4
+        with:
+          name: server-drizzle
+          path: ./artifacts/server-drizzle
 
       - name: Download web artifact
         uses: actions/download-artifact@v4
@@ -157,10 +164,10 @@ jobs:
 
       - name: Upload server binary and migrations
         run: |
-          chmod +x ./artifacts/server/server
-          scp ./artifacts/server/server \
+          chmod +x ./artifacts/server-binary/server
+          scp ./artifacts/server-binary/server \
             ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/opt/myapp/server/bin/server.new
-          rsync -avz --delete ./artifacts/server/drizzle/ \
+          rsync -avz --delete ./artifacts/server-drizzle/ \
             ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/opt/myapp/server/bin/drizzle/
 
       - name: Execute remote deployment

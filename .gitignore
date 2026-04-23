@@ -28,6 +28,10 @@ coverage/
 playwright-report/
 test-results
 
+# Server binary output
+apps/server/server
+apps/server/server.exe
+
 # Database files
 *.db
 *.db-shm
