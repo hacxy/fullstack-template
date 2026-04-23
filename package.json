@@ -18,7 +18,8 @@
     "db:studio": "bun --filter server db:studio",
     "test": "bun --filter web test:e2e && bun --filter server test",
     "coverage:report": "bun --filter '*' coverage:report",
-    "codegen:api": "bun --filter web codegen"
+    "codegen:api": "bun --filter web codegen",
+    "setup": "bun scripts/init-deploy.ts"
   },
   "devDependencies": {
     "@antfu/eslint-config": "^8.2.0",

@@ -209,58 +209,28 @@ The project deploys to a self-hosted Linux x64 server via GitHub Actions. Pushin
 - **Frontend** — static files served by Nginx
 - **Nginx** — reverse proxies `/api/` to the backend, serves everything else as SPA static files
 
-### Step 1 — First-time server setup
+### Step 1 — First-time setup
 
-Run `scripts/server-setup.sh` once on your server (requires sudo). The script supports both interactive and non-interactive modes:
+Run the setup script once from your local machine. It will SSH into your server and configure users, directories, systemd service, and Nginx automatically:
 
 ```bash
-# Interactive mode (recommended for first-timers)
-sudo bash scripts/server-setup.sh
-
-# Non-interactive mode
-# Usage: sudo bash server-setup.sh [deploy_user] [deploy_pubkey] [cors_origin]
-sudo bash scripts/server-setup.sh deploy "ssh-ed25519 AAAA... github-actions" "https://example.com"
+bun run setup
 ```
 
-The script will:
-- Prompt for deploy username, SSH public key, and your production CORS origin
-- Create the `myapp` service user and required directories
-- Configure SSH access and sudo permissions for the deploy user
-- Register and enable the `myapp-server` systemd service with correct environment variables
+The script will prompt for your server address, SSH key path, domain, and other settings (all have sensible defaults). It auto-detects the Linux distro to place the Nginx config correctly (Debian/Ubuntu use `sites-available`; RHEL/CentOS use `conf.d`). After it completes, it prints the GitHub Secrets you need to configure.
 
 **Expected directory layout after setup:**
 
 ```
-/opt/myapp/
+/opt/{project}/
 ├── server/
-│   ├── bin/server          # self-contained binary (replaced on each deploy)
+│   ├── server              # self-contained binary (replaced on each deploy)
 │   ├── drizzle/            # SQL migration files (synced on each deploy)
 │   └── sqlite.db           # database file (never overwritten by deploys)
 └── web/                    # frontend static files
 ```
 
-### Step 2 — Configure Nginx
-
-Copy `scripts/nginx-myapp.conf` to your server, update `server_name`, then enable it:
-
-**Debian / Ubuntu** (uses `sites-available` + symlink):
-
-```bash
-sudo cp nginx-myapp.conf /etc/nginx/sites-available/myapp
-# Edit server_name to your domain
-sudo ln -s /etc/nginx/sites-available/myapp /etc/nginx/sites-enabled/
-sudo nginx -t && sudo systemctl reload nginx
-```
-
-**RHEL / CentOS / Amazon Linux** (uses `conf.d`, no symlink needed):
-
-```bash
-sudo cp nginx-myapp.conf /etc/nginx/conf.d/myapp.conf
-# Edit server_name to your domain
-sudo nginx -t && sudo systemctl reload nginx
-```
-
-### Step 3 — Configure GitHub Secrets
+### Step 2 — Configure GitHub Secrets
 
 In your repository go to **Settings → Secrets and variables → Actions** and add:
 
@@ -271,7 +241,7 @@ In your repository go to **Settings → Secrets and variables → Actions** and 
 | `SSH_PRIVATE_KEY` (secret) | Full content of the SSH private key |
 | `PROD_WEB_API_URL` (secret) | Production API base URL injected into `apps/web/.env.production` as `VITE_API_URL` and reused by deployment health check (e.g. `https://api.example.com`) |
 
-### Step 4 — Deploy
+### Step 3 — Deploy
 
 Push a `prod_` prefixed tag to trigger the deployment workflow:
 
@@ -297,4 +267,4 @@ You can monitor progress in the **Actions** tab on GitHub.
 - **Auto-migration** — The server binary runs `migrate()` on startup. On first deploy it creates the database and applies all migrations; on subsequent deploys it only applies new ones. No manual migration step needed.
 - **No Bun on server** — The server binary is self-contained and handles its own migrations. Bun is not required on the production server.
 - **Downtime** — Due to SQLite's single-writer constraint, the service stops briefly (~1–3 s) while the binary is replaced.
-- **CORS origin** — Set during `server-setup.sh`. To change it later, edit the `CORS_ORIGIN` line in `/etc/systemd/system/myapp-server.service` and run `sudo systemctl daemon-reload && sudo systemctl restart myapp-server`.
+- **CORS origin** — Set during `bun run setup`. To change it later, edit the `CORS_ORIGIN` line in `/etc/systemd/system/{project}-server.service` and run `sudo systemctl daemon-reload && sudo systemctl restart {project}-server`.

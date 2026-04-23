@@ -211,58 +211,28 @@ chore: 更新依赖版本
 - **前端** — 静态文件由 Nginx 提供服务
 - **Nginx** — 将 `/api/` 反向代理到后端，其余路径作为 SPA 静态文件处理
 
-### 第一步 — 首次服务器初始化
+### 第一步 — 首次初始化
 
-在服务器上执行一次 `scripts/server-setup.sh`（需要 sudo 权限）。脚本支持**交互模式**和**非交互模式**：
+在本地执行一次初始化脚本，它会通过 SSH 自动完成服务器上的用户、目录、systemd 服务和 Nginx 配置：
 
 ```bash
-# 交互模式（推荐，会逐步引导输入配置）
-sudo bash scripts/server-setup.sh
-
-# 非交互模式
-# 用法: sudo bash server-setup.sh [部署用户名] [SSH 公钥] [CORS 来源]
-sudo bash scripts/server-setup.sh deploy "ssh-ed25519 AAAA... github-actions" "https://example.com"
+bun run setup
 ```
 
-脚本将自动完成：
-- 询问部署用户名、SSH 公钥、生产环境 CORS 域名
-- 创建 `myapp` 服务用户和所需目录
-- 配置 SSH 访问和部署用户的 sudo 权限
-- 注册并启用 `myapp-server` systemd 服务，并写入正确的环境变量
+脚本会交互式询问服务器地址、本地 SSH 私钥路径、域名等配置（均有合理默认值）。脚本会自动识别 Linux 发行版，选择正确的 Nginx 配置路径（Debian/Ubuntu 使用 `sites-available`；RHEL/CentOS 使用 `conf.d`）。执行完成后会打印需要在 GitHub 中配置的 Secrets。
 
 **初始化后的目录结构：**
 
 ```
-/opt/myapp/
+/opt/{project}/
 ├── server/
-│   ├── bin/server          # 自包含二进制（每次部署替换）
+│   ├── server              # 自包含二进制（每次部署替换）
 │   ├── drizzle/            # SQL 迁移文件（每次部署同步）
 │   └── sqlite.db           # 数据库文件（部署时永不覆盖）
 └── web/                    # 前端静态文件
 ```
 
-### 第二步 — 配置 Nginx
-
-将 `scripts/nginx-myapp.conf` 复制到服务器，修改其中的 `server_name`，然后启用：
-
-**Debian / Ubuntu**（使用 `sites-available` + 软链接）：
-
-```bash
-sudo cp nginx-myapp.conf /etc/nginx/sites-available/myapp
-# 编辑 server_name 为你的域名
-sudo ln -s /etc/nginx/sites-available/myapp /etc/nginx/sites-enabled/
-sudo nginx -t && sudo systemctl reload nginx
-```
-
-**RHEL / CentOS / Amazon Linux**（使用 `conf.d`，无需软链接）：
-
-```bash
-sudo cp nginx-myapp.conf /etc/nginx/conf.d/myapp.conf
-# 编辑 server_name 为你的域名
-sudo nginx -t && sudo systemctl reload nginx
-```
-
-### 第三步 — 配置 GitHub Secrets
+### 第二步 — 配置 GitHub Secrets
 
 在仓库的 **Settings → Secrets and variables → Actions** 中添加以下配置：
 
@@ -273,7 +243,7 @@ sudo nginx -t && sudo systemctl reload nginx
 | `SSH_PRIVATE_KEY`（secret） | SSH 私钥的完整内容 |
 | `PROD_WEB_API_URL`（secret） | 生产环境 API 基础地址。部署时会写入 `apps/web/.env.production` 的 `VITE_API_URL`，并在部署完成后用于健康检查（例如 `https://api.example.com`） |
 
-### 第四步 — 触发部署
+### 第三步 — 触发部署
 
 推送 `prod_` 前缀的 tag 即可触发部署流程：
 
@@ -299,4 +269,4 @@ test ──┘                   ├─► deploy
 - **自动迁移** — 服务端二进制启动时自动执行 `migrate()`。首次部署自动创建数据库并应用全部迁移；后续部署只应用新增迁移。无需手动执行任何迁移命令。
 - **无需服务器上的 Bun** — 服务端二进制自包含，内嵌迁移逻辑，生产服务器上不需要安装 Bun。
 - **停机时间** — 由于 SQLite 单写限制，替换二进制时服务会短暂停止（约 1~3 秒）。
-- **修改 CORS 来源** — 在 `server-setup.sh` 交互步骤中设置。如需修改，编辑 `/etc/systemd/system/myapp-server.service` 中的 `CORS_ORIGIN` 行，然后执行 `sudo systemctl daemon-reload && sudo systemctl restart myapp-server`。
+- **修改 CORS 来源** — 在 `bun run setup` 交互步骤中设置。如需修改，编辑 `/etc/systemd/system/{project}-server.service` 中的 `CORS_ORIGIN` 行，然后执行 `sudo systemctl daemon-reload && sudo systemctl restart {project}-server`。
