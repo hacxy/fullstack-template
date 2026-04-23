@@ -23,6 +23,7 @@
         "@repo/shared": "workspace:*",
         "drizzle-orm": "^0.45.2",
         "elysia": "^1.4.28",
+        "elysia-plugin-response": "workspace:*",
       },
       "devDependencies": {
         "bun-types": "latest",
@@ -55,6 +56,13 @@
         "typescript": "~6.0.2",
         "vite": "^8.0.9",
         "vite-plugin-istanbul": "^8.0.0",
+      },
+    },
+    "packages/elysia-plugin-response": {
+      "name": "elysia-plugin-response",
+      "version": "0.0.0",
+      "peerDependencies": {
+        "elysia": "^1.4.28",
       },
     },
     "packages/shared": {
@@ -782,6 +790,8 @@
     "electron-to-chromium": ["electron-to-chromium@1.5.340", "", {}, "sha512-908qahOGocRMinT2nM3ajCEM99H4iPdv84eagPP3FfZy/1ZGeOy2CZYzjhms81ckOPCXPlW7LkY4XpxD8r1DrA=="],
 
     "elysia": ["elysia@1.4.28", "", { "dependencies": { "cookie": "^1.1.1", "exact-mirror": "^0.2.7", "fast-decode-uri-component": "^1.0.1", "memoirist": "^0.4.0" }, "peerDependencies": { "@sinclair/typebox": ">= 0.34.0 < 1", "@types/bun": ">= 1.2.0", "file-type": ">= 20.0.0", "openapi-types": ">= 12.0.0", "typescript": ">= 5.0.0" }, "optionalPeers": ["@types/bun", "typescript"] }, "sha512-Vrx8sBnvq8squS/3yNBzR1jBXI+SgmnmvwawPjNuEHndUe5l1jV2Gp6JJ4ulDkEB8On6bWmmuyPpA+bq4t+WYg=="],
+
+    "elysia-plugin-response": ["elysia-plugin-response@workspace:packages/elysia-plugin-response"],
 
     "emoji-regex": ["emoji-regex@8.0.0", "", {}, "sha512-MSjYzcWNOA0ewAHpz0MxpYFvwg6yjy1NG3xteoqz644VCo/RPgnr1/GGt+ic3iJTzQ8Eu3TdM14SawnVUmGE6A=="],
 

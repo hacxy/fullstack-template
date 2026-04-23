@@ -37,7 +37,6 @@ export interface components {
       id: number
       /** @description User name */
       name: string
-      foo?: string
       /** @description Creation date */
       createdAt: Record<string, never> | string | number
     }
@@ -49,6 +48,48 @@ export interface components {
       /** @description Creation date */
       createdAt: Record<string, never> | string | number
     }[]
+    'common.error': {
+      /** @description Business error code for failed requests */
+      code: number
+      /** @description Human readable error message */
+      msg: string
+      /** @description Always null for current error payloads */
+      data: null
+    }
+    'user.responseItem': {
+      /**
+       * @description Business code: 0 means success
+       * @constant
+       */
+      code: 0
+      /** @description Business message for successful response */
+      msg: string
+      data: {
+        /** @description User ID */
+        id: number
+        /** @description User name */
+        name: string
+        /** @description Creation date */
+        createdAt: Record<string, never> | string | number
+      }
+    }
+    'user.responseList': {
+      /**
+       * @description Business code: 0 means success
+       * @constant
+       */
+      code: 0
+      /** @description Business message for successful response */
+      msg: string
+      data: {
+        /** @description User ID */
+        id: number
+        /** @description User name */
+        name: string
+        /** @description Creation date */
+        createdAt: Record<string, never> | string | number
+      }[]
+    }
   }
   responses: never
   parameters: never
@@ -72,9 +113,49 @@ export interface operations {
           [name: string]: unknown
         }
         content: {
-          'application/json': components['schemas']['user.list']
-          'multipart/form-data': components['schemas']['user.list']
-          'text/plain': components['schemas']['user.list']
+          'application/json': components['schemas']['user.responseList']
+          'multipart/form-data': components['schemas']['user.responseList']
+          'text/plain': components['schemas']['user.responseList']
+        }
+      }
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['common.error']
+          'multipart/form-data': components['schemas']['common.error']
+          'text/plain': components['schemas']['common.error']
+        }
+      }
+      404: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['common.error']
+          'multipart/form-data': components['schemas']['common.error']
+          'text/plain': components['schemas']['common.error']
+        }
+      }
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['common.error']
+          'multipart/form-data': components['schemas']['common.error']
+          'text/plain': components['schemas']['common.error']
+        }
+      }
+      500: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['common.error']
+          'multipart/form-data': components['schemas']['common.error']
+          'text/plain': components['schemas']['common.error']
         }
       }
     }
@@ -99,9 +180,49 @@ export interface operations {
           [name: string]: unknown
         }
         content: {
-          'application/json': components['schemas']['user.item']
-          'multipart/form-data': components['schemas']['user.item']
-          'text/plain': components['schemas']['user.item']
+          'application/json': components['schemas']['user.responseItem']
+          'multipart/form-data': components['schemas']['user.responseItem']
+          'text/plain': components['schemas']['user.responseItem']
+        }
+      }
+      400: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['common.error']
+          'multipart/form-data': components['schemas']['common.error']
+          'text/plain': components['schemas']['common.error']
+        }
+      }
+      404: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['common.error']
+          'multipart/form-data': components['schemas']['common.error']
+          'text/plain': components['schemas']['common.error']
+        }
+      }
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['common.error']
+          'multipart/form-data': components['schemas']['common.error']
+          'text/plain': components['schemas']['common.error']
+        }
+      }
+      500: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['common.error']
+          'multipart/form-data': components['schemas']['common.error']
+          'text/plain': components['schemas']['common.error']
         }
       }
     }

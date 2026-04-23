@@ -10,7 +10,7 @@ mock.module('../../src/db', () => ({
   },
 }))
 
-const { userController } = await import('../../src/controllers/userController')
+const { app } = await import('../../src/app')
 
 const mockUsers = [
   { id: 1, name: 'Alice', createdAt: new Date('2024-01-01') },
@@ -26,26 +26,30 @@ describe('GET /api/users', () => {
   it('returns 200 with user list', async () => {
     mockFrom.mockResolvedValue(mockUsers)
 
-    const res = await userController.handle(
-      new Request('http://localhost/api/users'),
+    const res = await app.handle(
+      new Request('http://localhost/api/users/'),
     )
 
     expect(res.status).toBe(200)
     const body = await res.json()
-    expect(body).toHaveLength(2)
-    expect(body[0].name).toBe('Alice')
+    expect(body.code).toBe(0)
+    expect(body.msg).toBe('ok')
+    expect(body.data).toHaveLength(2)
+    expect(body.data[0].name).toBe('Alice')
   })
 
   it('returns 200 with empty array when no users', async () => {
     mockFrom.mockResolvedValue([])
 
-    const res = await userController.handle(
-      new Request('http://localhost/api/users'),
+    const res = await app.handle(
+      new Request('http://localhost/api/users/'),
     )
 
     expect(res.status).toBe(200)
     const body = await res.json()
-    expect(body).toEqual([])
+    expect(body.code).toBe(0)
+    expect(body.msg).toBe('ok')
+    expect(body.data).toEqual([])
   })
 })
 
@@ -59,8 +63,8 @@ describe('POST /api/users', () => {
     const created = { id: 3, name: 'Charlie', createdAt: new Date() }
     mockReturning.mockResolvedValue([created])
 
-    const res = await userController.handle(
-      new Request('http://localhost/api/users', {
+    const res = await app.handle(
+      new Request('http://localhost/api/users/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: 'Charlie' }),
@@ -69,13 +73,15 @@ describe('POST /api/users', () => {
 
     expect(res.status).toBe(200)
     const body = await res.json()
-    expect(body.name).toBe('Charlie')
-    expect(body.id).toBe(3)
+    expect(body.code).toBe(0)
+    expect(body.msg).toBe('ok')
+    expect(body.data.name).toBe('Charlie')
+    expect(body.data.id).toBe(3)
   })
 
   it('returns 422 when body is missing name', async () => {
-    const res = await userController.handle(
-      new Request('http://localhost/api/users', {
+    const res = await app.handle(
+      new Request('http://localhost/api/users/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({}),
@@ -83,11 +89,15 @@ describe('POST /api/users', () => {
     )
 
     expect(res.status).toBe(422)
+    const body = await res.json()
+    expect(body.code).toBe(1001)
+    expect(body.data).toBeNull()
+    expect(typeof body.msg).toBe('string')
   })
 
   it('returns 422 when name is empty string', async () => {
-    const res = await userController.handle(
-      new Request('http://localhost/api/users', {
+    const res = await app.handle(
+      new Request('http://localhost/api/users/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: '' }),
@@ -95,5 +105,9 @@ describe('POST /api/users', () => {
     )
 
     expect(res.status).toBe(422)
+    const body = await res.json()
+    expect(body.code).toBe(1001)
+    expect(body.data).toBeNull()
+    expect(typeof body.msg).toBe('string')
   })
 })

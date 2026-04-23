@@ -1,0 +1,15 @@
+{
+  "name": "elysia-plugin-response",
+  "type": "module",
+  "version": "0.0.0",
+  "private": true,
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "files": [
+    "src"
+  ],
+  "peerDependencies": {
+    "elysia": "^1.4.28"
+  }
+}

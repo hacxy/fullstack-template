@@ -1,8 +1,10 @@
 import type { components } from '../services'
-import { client } from '../services'
+import { client, getApiErrorMessage, unwrapApiResponse } from '../services'
 import { createStore } from './createStore'
 
 type User = components['schemas']['user.item']
+type UserListEnvelope = components['schemas']['user.responseList']
+type UserItemEnvelope = components['schemas']['user.responseItem']
 
 interface UsersStore {
   users: User[]
@@ -17,14 +19,22 @@ export const useUsersStore = createStore<UsersStore>('UsersStore', set => ({
   fetchUsers: async () => {
     set({ loading: true })
     const { data, error } = await client.GET('/api/users/')
-    if (error)
-      throw error
-    set({ users: data, loading: false })
+    if (error) {
+      set({ loading: false })
+      throw new Error(getApiErrorMessage(error))
+    }
+
+    set({
+      users: unwrapApiResponse((data as UserListEnvelope)),
+      loading: false,
+    })
   },
   addUser: async (name) => {
     const { data, error } = await client.POST('/api/users/', { body: { name } })
     if (error)
-      throw error
-    set(state => ({ users: [...state.users, data] }))
+      throw new Error(getApiErrorMessage(error))
+
+    const createdUser = unwrapApiResponse((data as UserItemEnvelope))
+    set(state => ({ users: [...state.users, createdUser] }))
   },
 }))

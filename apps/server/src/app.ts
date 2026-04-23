@@ -2,11 +2,12 @@ import process from 'node:process'
 import { cors } from '@elysiajs/cors'
 import { swagger } from '@elysiajs/swagger'
 import { Elysia } from 'elysia'
+import { response } from 'elysia-plugin-response'
 import { userController } from './controllers/userController.js'
 
 export const app = new Elysia()
   .use(cors({ origin: process.env.CORS_ORIGIN ?? 'http://localhost:5173' }))
-  .get('/', () => ({ status: 'ok' }))
+  .use(response())
   .use(swagger({
     path: '/scalar',
     documentation: {
