@@ -66,13 +66,17 @@ jobs:
       - name: Build server binary (Linux x64)
         run: bun --filter server build:linux-x64
 
+      - name: Stage server artifacts
+        run: |
+          mkdir -p ./server-staging
+          cp apps/server/dist/server ./server-staging/server
+          cp -r apps/server/dist/drizzle ./server-staging/drizzle
+
       - name: Upload server artifact
         uses: actions/upload-artifact@v4
         with:
           name: server-binary
-          path: |
-            apps/server/dist/server
-            apps/server/dist/drizzle/
+          path: ./server-staging/
           retention-days: 1
 
   build-web:
@@ -153,10 +157,10 @@ jobs:
 
       - name: Upload server binary and migrations
         run: |
-          chmod +x ./artifacts/server/apps/server/dist/server
-          scp ./artifacts/server/apps/server/dist/server \
+          chmod +x ./artifacts/server/server
+          scp ./artifacts/server/server \
             ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/opt/myapp/server/bin/server.new
-          rsync -avz --delete ./artifacts/server/apps/server/dist/drizzle/ \
+          rsync -avz --delete ./artifacts/server/drizzle/ \
             ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/opt/myapp/server/bin/drizzle/
 
       - name: Execute remote deployment
