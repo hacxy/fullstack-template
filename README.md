@@ -201,11 +201,11 @@ chore: update dependencies
 
 ## Deployment
 
-The project deploys to a self-hosted Linux x64 server via GitHub Actions. Pushing a `prod_*` tag triggers the workflow, which runs lint + tests, builds a self-contained server binary and the web static files, then uploads them to the server over SSH.
+The project deploys to a self-hosted Linux x64 server via GitHub Actions. The workflow is triggered manually and runs lint + tests, builds a self-contained server binary and the web static files, then uploads them to the server over SSH.
 
 **Architecture on the server:**
 
-- **Backend** — runs as a systemd service (`myapp-server`), serves on port 3000
+- **Backend** — runs as a systemd service (`{project}-server`), serves on port 3000
 - **Frontend** — static files served by Nginx
 - **Nginx** — reverse proxies `/api/` to the backend, serves everything else as SPA static files
 
@@ -217,7 +217,7 @@ Run the setup script once from your local machine. It will SSH into your server 
 bun run setup
 ```
 
-The script will prompt for your server address, SSH key path, domain, and other settings (all have sensible defaults). It auto-detects the Linux distro to place the Nginx config correctly (Debian/Ubuntu use `sites-available`; RHEL/CentOS use `conf.d`). After it completes, it prints the GitHub Secrets you need to configure.
+The script will prompt for your server address, SSH key path, domain, and other settings (all have sensible defaults). It auto-detects the Linux distro to place the Nginx config correctly (Debian/Ubuntu use `sites-available`; RHEL/CentOS use `conf.d`). HTTPS is supported via Let's Encrypt (auto-issued free certificate) or a manual certificate — or skip it entirely for HTTP-only. After it completes, it prints the GitHub Secrets you need to configure.
 
 **Expected directory layout after setup:**
 
@@ -240,16 +240,11 @@ In your repository go to **Settings → Secrets and variables → Actions** and 
 | `SERVER_HOST` (secret) | Server IP or domain |
 | `SERVER_USER` (secret) | SSH login username (e.g. `deploy`) |
 | `SSH_PRIVATE_KEY` (secret) | Full content of the SSH private key |
-| `PROD_WEB_API_URL` (secret) | Production API base URL injected into `apps/web/.env.production` as `VITE_API_URL` and reused by deployment health check (e.g. `https://api.example.com`) |
+| `PROD_WEB_API_URL` (secret) | Production API base URL injected into `apps/web/.env.production` as `VITE_API_URL` and reused by deployment health check. Use `https://` if HTTPS is configured, `http://` otherwise (e.g. `https://api.example.com` or `http://1.2.3.4`) |
 
 ### Step 3 — Deploy
 
-Push a `prod_` prefixed tag to trigger the deployment workflow:
-
-```bash
-git tag prod_v1.0.0
-git push origin prod_v1.0.0
-```
+Go to your repository on GitHub, click **Actions → Deploy → Run workflow** to trigger a deployment.
 
 The workflow runs in this order:
 

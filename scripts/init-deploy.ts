@@ -177,7 +177,8 @@ async function collectConfig(): Promise<Config> {
     }
   }
 
-  const corsOrigin = await p.ask('CORS 来源（前端地址）', `https://${domain}`)
+  const defaultProtocol = httpsMethod !== 'none' ? 'https' : 'http'
+  const corsOrigin = await p.ask('CORS 来源（前端地址）', `${defaultProtocol}://${domain}`)
   const serverPort = Number(await p.ask('后端监听端口', '3000'))
   const generateKey = await p.askBool('生成部署专用 SSH 密钥对')
   p.close()
@@ -479,7 +480,7 @@ function printSummary(config: Config, privateKey?: string): void {
   console.log('请在 GitHub 仓库 Settings > Secrets and variables > Actions 中添加：\n')
   const apiUrl = config.configureNginx
     ? (config.httpsMethod !== 'none' ? `https://${config.domain}` : `http://${config.domain}`)
-    : `https://${config.serverHost}`
+    : `http://${config.serverHost}`
   console.log(`  SERVER_HOST      = ${c.bold}${config.serverHost}${c.reset}`)
   console.log(`  SERVER_USER      = ${c.bold}${config.deployUser}${c.reset}`)
   console.log(`  PROD_WEB_API_URL = ${c.bold}${apiUrl}${c.reset}`)

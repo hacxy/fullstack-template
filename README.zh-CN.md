@@ -203,11 +203,11 @@ chore: 更新依赖版本
 
 ## 部署
 
-项目通过 GitHub Actions 部署到自托管的 Linux x64 服务器。推送 `prod_*` 前缀的 tag 会触发部署流程：依次执行 lint 检查、运行测试、构建自包含的服务端二进制和前端静态文件，最后通过 SSH 上传到服务器。
+项目通过 GitHub Actions 部署到自托管的 Linux x64 服务器。工作流手动触发，依次执行 lint 检查、运行测试、构建自包含的服务端二进制和前端静态文件，最后通过 SSH 上传到服务器。
 
 **服务器架构：**
 
-- **后端** — 以 systemd 服务（`myapp-server`）运行，监听端口 3000
+- **后端** — 以 systemd 服务（`{project}-server`）运行，监听端口 3000
 - **前端** — 静态文件由 Nginx 提供服务
 - **Nginx** — 将 `/api/` 反向代理到后端，其余路径作为 SPA 静态文件处理
 
@@ -219,7 +219,7 @@ chore: 更新依赖版本
 bun run setup
 ```
 
-脚本会交互式询问服务器地址、本地 SSH 私钥路径、域名等配置（均有合理默认值）。脚本会自动识别 Linux 发行版，选择正确的 Nginx 配置路径（Debian/Ubuntu 使用 `sites-available`；RHEL/CentOS 使用 `conf.d`）。执行完成后会打印需要在 GitHub 中配置的 Secrets。
+脚本会交互式询问服务器地址、本地 SSH 私钥路径、域名等配置（均有合理默认值）。脚本会自动识别 Linux 发行版，选择正确的 Nginx 配置路径（Debian/Ubuntu 使用 `sites-available`；RHEL/CentOS 使用 `conf.d`）。支持 HTTPS 配置——可选 Let's Encrypt（自动申请免费证书）、手动证书，或仅 HTTP。执行完成后会打印需要在 GitHub 中配置的 Secrets。
 
 **初始化后的目录结构：**
 
@@ -242,16 +242,11 @@ bun run setup
 | `SERVER_HOST`（secret） | 服务器 IP 或域名 |
 | `SERVER_USER`（secret） | SSH 登录用户名（如 `deploy`） |
 | `SSH_PRIVATE_KEY`（secret） | SSH 私钥的完整内容 |
-| `PROD_WEB_API_URL`（secret） | 生产环境 API 基础地址。部署时会写入 `apps/web/.env.production` 的 `VITE_API_URL`，并在部署完成后用于健康检查（例如 `https://api.example.com`） |
+| `PROD_WEB_API_URL`（secret） | 生产环境 API 基础地址。部署时会写入 `apps/web/.env.production` 的 `VITE_API_URL`，并在部署完成后用于健康检查。已配置 HTTPS 则用 `https://`，否则用 `http://`（例如 `https://api.example.com` 或 `http://1.2.3.4`） |
 
 ### 第三步 — 触发部署
 
-推送 `prod_` 前缀的 tag 即可触发部署流程：
-
-```bash
-git tag prod_v1.0.0
-git push origin prod_v1.0.0
-```
+在 GitHub 仓库页面点击 **Actions → Deploy → Run workflow** 手动触发部署。
 
 流程执行顺序如下：
 
