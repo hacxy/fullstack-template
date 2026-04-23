@@ -41,3 +41,4 @@ apps/server/server.exe
 .env
 .env.local
 
+*.bak
