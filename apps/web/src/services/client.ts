@@ -1,17 +1,16 @@
-import type { paths } from './schema.gen'
+import type { components, paths } from './schema.gen'
 import createClient from 'openapi-fetch'
 
-export interface ApiEnvelope<T> {
-  code: number
-  msg: string
-  data: T
-}
+type SchemaMap = components['schemas']
+type EnvelopeSchemaName = Extract<keyof SchemaMap, `${string}.response${string}`>
+
+export type ApiEnvelope = SchemaMap[EnvelopeSchemaName]
 
 export const client = createClient<paths>({
   baseUrl: import.meta.env.VITE_API_URL ?? 'http://localhost:3000',
 })
 
-export function unwrapApiResponse<T>(payload: ApiEnvelope<T>): T {
+export function unwrapApiResponse<TEnvelope extends ApiEnvelope>(payload: TEnvelope): TEnvelope['data'] {
   if (payload.code !== 0)
     throw new Error(payload.msg || 'Request failed')
 
@@ -20,7 +19,7 @@ export function unwrapApiResponse<T>(payload: ApiEnvelope<T>): T {
 
 export function getApiErrorMessage(error: unknown): string {
   if (error && typeof error === 'object') {
-    const envelope = error as Partial<ApiEnvelope<unknown>>
+    const envelope = error as Partial<Pick<ApiEnvelope, 'msg'>>
     if (typeof envelope.msg === 'string' && envelope.msg.length > 0)
       return envelope.msg
   }
