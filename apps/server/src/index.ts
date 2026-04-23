@@ -15,5 +15,3 @@ async function start() {
 }
 
 start()
-
-export type App = typeof app

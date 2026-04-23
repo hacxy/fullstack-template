@@ -5,4 +5,5 @@ import * as schema from './schema.js'
 
 const dbPath = (process.env.DATABASE_URL ?? 'file:./sqlite.db').replace(/^file:/, '')
 const sqlite = new Database(dbPath)
+sqlite.run('PRAGMA journal_mode=WAL;')
 export const db = drizzle(sqlite, { schema })
