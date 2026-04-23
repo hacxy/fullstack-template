@@ -167,7 +167,7 @@ jobs:
           chmod +x ./artifacts/server-binary/server
           scp ./artifacts/server-binary/server \
             ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/opt/fullstack-template/server/bin/server.new
-          rsync -avz --no-owner --no-group --omit-dir-times --delete ./artifacts/server-drizzle/ \
+          rsync -rlz --delete ./artifacts/server-drizzle/ \
             ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/opt/fullstack-template/server/drizzle/
 
       - name: Execute remote deployment
