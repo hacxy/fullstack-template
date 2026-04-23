@@ -79,6 +79,7 @@ apps/server/
 │   ├── models/          # Elysia request/response type models
 │   ├── controllers/     # Thin request handlers, delegate to services
 │   ├── services/        # Business logic
+│   ├── app.ts           # Elysia app instance, middleware, route mounting
 │   └── index.ts         # Entry point — runs migrations then starts on port 3000
 └── sqlite.db            # Local database file (git-ignored)
 ```
@@ -87,7 +88,7 @@ apps/server/
 
 - **Elysia** — fast, type-safe web framework with end-to-end type inference
 - **Drizzle ORM** — type-safe SQL with schema-first migrations
-- **SQLite** via `@libsql/client` — zero-config local database
+- **SQLite** via `bun:sqlite` — Bun's native built-in SQLite driver, zero-config
 - **Auto-migration** — `migrate()` runs on every server startup; safe to run repeatedly
 - **Swagger / Scalar UI** — auto-generated API docs at `/scalar`
 - **Hot reload** — `bun --watch` restarts on file changes
@@ -139,6 +140,7 @@ apps/web/
     ├── layouts/         # Shared layout components (e.g. RootLayout)
     ├── pages/           # One component per route (Home, NotFound, …)
     ├── router/          # React Router configuration
+    ├── services/        # openapi-fetch client and generated API types
     ├── store/           # Zustand stores
     ├── App.tsx          # Root component
     └── main.tsx         # Entry point
@@ -150,6 +152,7 @@ apps/web/
 - **React Router** — client-side routing with nested layouts
 - **Zustand** — lightweight global state management
 - **Vite** — instant HMR dev server and optimized production build
+- **openapi-fetch** — type-safe API client generated from the server's OpenAPI spec
 - **Playwright** — E2E tests with browser automation
 
 ### Dev Server
@@ -183,7 +186,9 @@ Imported as `@repo/shared`. Contains TypeScript types shared between server and 
 |--------|-------------|
 | `bun dev` | Start all workspaces in dev mode |
 | `bun build` | Build all workspaces |
+| `bun test` | Run all tests (E2E + unit) |
 | `bun lint:fix` | Auto-fix lint issues across all workspaces |
+| `bun codegen:api` | Regenerate frontend API types from the server's OpenAPI spec |
 
 ---
 

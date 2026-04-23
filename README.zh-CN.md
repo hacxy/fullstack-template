@@ -79,6 +79,7 @@ apps/server/
 │   ├── models/          # Elysia 请求/响应类型模型
 │   ├── controllers/     # 请求处理器（薄层，委托给 service）
 │   ├── services/        # 业务逻辑
+│   ├── app.ts           # Elysia 应用实例、中间件与路由挂载
 │   └── index.ts         # 入口——执行迁移后启动服务，端口 3000
 └── sqlite.db            # 本地数据库文件（已 git-ignore）
 ```
@@ -87,7 +88,7 @@ apps/server/
 
 - **Elysia** — 快速、类型安全的 Web 框架，支持端到端类型推导
 - **Drizzle ORM** — 类型安全的 SQL，schema 优先的迁移管理
-- **SQLite** via `@libsql/client` — 零配置本地数据库
+- **SQLite** via `bun:sqlite` — Bun 原生内置 SQLite 驱动，零配置
 - **自动迁移** — `migrate()` 在每次服务器启动时执行，可重复运行且幂等
 - **Swagger / Scalar UI** — 在 `/scalar` 自动生成 API 文档
 - **热重载** — `bun --watch` 文件变更时自动重启
@@ -139,6 +140,7 @@ apps/web/
     ├── layouts/         # 公共布局组件（如 RootLayout）
     ├── pages/           # 每个路由对应一个组件（Home、NotFound 等）
     ├── router/          # React Router 配置
+    ├── services/        # openapi-fetch 客户端与自动生成的 API 类型
     ├── store/           # Zustand 状态管理
     ├── App.tsx          # 根组件
     └── main.tsx         # 入口文件
@@ -150,6 +152,7 @@ apps/web/
 - **React Router** — 客户端路由，支持嵌套布局
 - **Zustand** — 轻量级全局状态管理
 - **Vite** — 即时 HMR 开发服务器与优化的生产构建
+- **openapi-fetch** — 基于服务端 OpenAPI 规范自动生成的类型安全 API 客户端
 - **Playwright** — 基于浏览器自动化的 E2E 测试
 
 ### 开发服务器
@@ -183,7 +186,9 @@ bun test:e2e:ui     # 交互式 UI 模式
 |------|------|
 | `bun dev` | 启动所有工作区的开发模式 |
 | `bun build` | 构建所有工作区 |
+| `bun test` | 运行全部测试（E2E + 单元测试） |
 | `bun lint:fix` | 自动修复所有工作区的 lint 问题 |
+| `bun codegen:api` | 根据服务端 OpenAPI 规范重新生成前端 API 类型 |
 
 ---
 
