@@ -26,11 +26,16 @@ interface Config {
   initUser: string
   initKeyPath: string
   deployUser: string
+  configureNginx: boolean
   nginxConfName: string
   domain: string
   corsOrigin: string
   serverPort: number
   generateKey: boolean
+  httpsMethod: 'none' | 'letsencrypt' | 'manual'
+  httpsEmail?: string
+  httpsCertPath?: string
+  httpsKeyPath?: string
 }
 
 // ── Console helpers ───────────────────────────────────────────────────────────
@@ -142,20 +147,52 @@ async function collectConfig(): Promise<Config> {
   const initUser = await p.ask('初始 SSH 用户（需 root 或 NOPASSWD sudo 权限）', 'root')
   const initKeyPath = await p.ask('本地 SSH 私钥路径（用于首次连接服务器）', defaultKeyPath)
   const deployUser = await p.ask('部署用户名（GitHub Actions 用）', 'deploy')
-  const nginxConfName = await p.ask('Nginx 配置文件名', projectName)
-  const domain = await p.ask('域名或 IP（nginx server_name）', serverHost)
+
+  const configureNginx = await p.askBool('由脚本自动生成并上传 Nginx 配置？（选 N 跳过，稍后自行配置）')
+  let nginxConfName = ''
+  let domain = serverHost
+  let httpsMethod: Config['httpsMethod'] = 'none'
+  let httpsEmail: string | undefined
+  let httpsCertPath: string | undefined
+  let httpsKeyPath: string | undefined
+
+  if (configureNginx) {
+    nginxConfName = await p.ask('Nginx 配置文件名', projectName)
+    domain = await p.ask('域名或 IP（nginx server_name）', serverHost)
+    const isIp = /^\d{1,3}(\.\d{1,3}){3}$/.test(domain)
+    if (!isIp) {
+      const wantHttps = await p.askBool('配置 HTTPS？')
+      if (wantHttps) {
+        const method = await p.ask("证书方式 (1=Let's Encrypt  2=手动证书)", '1')
+        if (method === '2') {
+          httpsMethod = 'manual'
+          httpsCertPath = await p.ask('证书文件路径（服务器上）', `/etc/ssl/certs/${domain}.pem`)
+          httpsKeyPath = await p.ask('私钥文件路径（服务器上）', `/etc/ssl/private/${domain}.key`)
+        }
+        else {
+          httpsMethod = 'letsencrypt'
+          httpsEmail = await p.ask("Let's Encrypt 注册邮箱", `admin@${domain}`)
+        }
+      }
+    }
+  }
+
   const corsOrigin = await p.ask('CORS 来源（前端地址）', `https://${domain}`)
   const serverPort = Number(await p.ask('后端监听端口', '3000'))
   const generateKey = await p.askBool('生成部署专用 SSH 密钥对')
   p.close()
 
+  const httpsLabel = httpsMethod === 'letsencrypt' ? "Let's Encrypt" : httpsMethod === 'manual' ? '手动证书' : '仅 HTTP'
   console.log('\n' + '─'.repeat(42))
   console.log(`  项目名称 : ${c.bold}${projectName}${c.reset}`)
   console.log(`  部署目录 : ${c.bold}${appDir}${c.reset}`)
   console.log(`  服务器   : ${c.bold}${serverHost}${c.reset}`)
   console.log(`  初始用户 : ${c.bold}${initUser}${c.reset}`)
   console.log(`  部署用户 : ${c.bold}${deployUser}${c.reset}`)
-  console.log(`  域名     : ${c.bold}${domain}${c.reset}`)
+  if (configureNginx) {
+    console.log(`  域名     : ${c.bold}${domain}${c.reset}`)
+    console.log(`  HTTPS    : ${c.bold}${httpsLabel}${c.reset}`)
+  }
   console.log(`  CORS     : ${c.bold}${corsOrigin}${c.reset}`)
   console.log(`  端口     : ${c.bold}${serverPort}${c.reset}`)
   console.log('─'.repeat(42))
@@ -171,11 +208,16 @@ async function collectConfig(): Promise<Config> {
     initUser,
     initKeyPath,
     deployUser,
+    configureNginx,
     nginxConfName,
     domain,
     corsOrigin,
     serverPort,
     generateKey,
+    httpsMethod,
+    httpsEmail,
+    httpsCertPath,
+    httpsKeyPath,
   }
 }
 
@@ -260,10 +302,7 @@ setfacl -R -m "u:${config.deployUser}:rwx" "${config.appDir}/server" 2>/dev/null
 // ── Nginx setup script ────────────────────────────────────────────────────────
 
 function buildNginxScript(config: Config): string {
-  const nginxConf = `server {
-    listen 80;
-    server_name ${config.domain};
-
+  const appBlock = `
     root ${config.appDir}/web;
     index index.html;
 
@@ -303,7 +342,30 @@ function buildNginxScript(config: Config): string {
     add_header X-Content-Type-Options "nosniff";
 
     access_log /var/log/nginx/${config.nginxConfName}_access.log;
-    error_log  /var/log/nginx/${config.nginxConfName}_error.log;
+    error_log  /var/log/nginx/${config.nginxConfName}_error.log;`
+
+  const nginxConf = config.httpsMethod === 'manual'
+    ? `server {
+    listen 80;
+    server_name ${config.domain};
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl;
+    server_name ${config.domain};
+
+    ssl_certificate     ${config.httpsCertPath};
+    ssl_certificate_key ${config.httpsKeyPath};
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers HIGH:!aNULL:!MD5;
+${appBlock}
+}
+`
+    : `server {
+    listen 80;
+    server_name ${config.domain};
+${appBlock}
 }
 `
   const encoded = Buffer.from(nginxConf).toString('base64')
@@ -331,6 +393,30 @@ fi
 echo "==> [2/2] 测试并重载 Nginx"
 nginx -t
 systemctl reload nginx
+`
+}
+
+// ── Let's Encrypt setup ───────────────────────────────────────────────────────
+
+function buildLetsEncryptScript(config: Config): string {
+  return `#!/usr/bin/env bash
+set -euo pipefail
+
+echo "==> [1/2] 安装 Certbot"
+if ! command -v certbot &>/dev/null; then
+  if command -v apt-get &>/dev/null; then
+    apt-get update -qq && apt-get install -y certbot python3-certbot-nginx
+  elif command -v dnf &>/dev/null; then
+    dnf install -y certbot python3-certbot-nginx
+  elif command -v yum &>/dev/null; then
+    yum install -y epel-release && yum install -y certbot python3-certbot-nginx
+  else
+    echo "无法自动安装 certbot，请手动安装后重试" >&2; exit 1
+  fi
+fi
+
+echo "==> [2/2] 申请证书并配置 HTTPS"
+certbot --nginx -d '${config.domain}' --non-interactive --agree-tos -m '${config.httpsEmail}' --redirect
 `
 }
 
@@ -391,9 +477,12 @@ function printSummary(config: Config, privateKey?: string): void {
   console.log(`${c.green}${c.bold}${'═'.repeat(44)}${c.reset}\n`)
 
   console.log('请在 GitHub 仓库 Settings > Secrets and variables > Actions 中添加：\n')
+  const apiUrl = config.configureNginx
+    ? (config.httpsMethod !== 'none' ? `https://${config.domain}` : `http://${config.domain}`)
+    : `https://${config.serverHost}`
   console.log(`  SERVER_HOST      = ${c.bold}${config.serverHost}${c.reset}`)
   console.log(`  SERVER_USER      = ${c.bold}${config.deployUser}${c.reset}`)
-  console.log(`  PROD_WEB_API_URL = ${c.bold}https://${config.domain}${c.reset}`)
+  console.log(`  PROD_WEB_API_URL = ${c.bold}${apiUrl}${c.reset}`)
 
   if (privateKey) {
     console.log(`\n  SSH_PRIVATE_KEY  = （下方私钥内容）\n`)
@@ -427,9 +516,20 @@ step('初始化服务器（用户、目录、systemd 服务）')
 await sshRootScript(config, buildServerSetupScript(config))
 ok('服务器初始化完成')
 
-step('配置 Nginx')
-await sshRootScript(config, buildNginxScript(config))
-ok('Nginx 配置完成')
+if (config.configureNginx) {
+  step('配置 Nginx')
+  await sshRootScript(config, buildNginxScript(config))
+  ok('Nginx 配置完成')
+
+  if (config.httpsMethod === 'letsencrypt') {
+    step("配置 HTTPS (Let's Encrypt)")
+    await sshRootScript(config, buildLetsEncryptScript(config))
+    ok('HTTPS 证书申请完成，nginx 已自动更新')
+  }
+}
+else {
+  warn('已跳过 Nginx 配置，请手动创建')
+}
 
 let privateKey: string | undefined
 if (config.generateKey) {
