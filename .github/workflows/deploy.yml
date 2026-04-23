@@ -1,9 +1,7 @@
 name: Deploy
 
 on:
-  push:
-    tags:
-      - 'prod_*'
+  workflow_dispatch:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -68,16 +66,13 @@ jobs:
       - name: Build server binary (Linux x64)
         run: bun --filter server build:linux-x64
 
-      - name: Package migrations
-        run: tar -czf migrations.tar.gz -C apps/server drizzle
-
       - name: Upload server artifact
         uses: actions/upload-artifact@v4
         with:
           name: server-binary
           path: |
             apps/server/dist/server
-            migrations.tar.gz
+            apps/server/dist/drizzle/
           retention-days: 1
 
   build-web:
@@ -147,7 +142,6 @@ jobs:
         run: |
           ssh ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} '
             mkdir -p /opt/myapp/server/bin
-            mkdir -p /opt/myapp/server/drizzle
             mkdir -p /opt/myapp/web
           '
 
@@ -157,16 +151,13 @@ jobs:
             ./artifacts/web/ \
             ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/opt/myapp/web/
 
-      - name: Upload server binary
+      - name: Upload server binary and migrations
         run: |
           chmod +x ./artifacts/server/apps/server/dist/server
           scp ./artifacts/server/apps/server/dist/server \
             ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/opt/myapp/server/bin/server.new
-
-      - name: Upload migrations
-        run: |
-          scp ./artifacts/server/migrations.tar.gz \
-            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/opt/myapp/server/
+          rsync -avz --delete ./artifacts/server/apps/server/dist/drizzle/ \
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/opt/myapp/server/bin/drizzle/
 
       - name: Execute remote deployment
         run: |
@@ -176,19 +167,15 @@ jobs:
             APP_DIR="/opt/myapp/server"
             BIN_DIR="$APP_DIR/bin"
 
-            echo "==> [1/4] 解压迁移文件..."
-            tar -xzf "$APP_DIR/migrations.tar.gz" -C "$APP_DIR"
-            rm -f "$APP_DIR/migrations.tar.gz"
-
-            echo "==> [2/4] 停止旧服务..."
+            echo "==> [1/3] 停止旧服务..."
             # 首次部署时服务未运行，|| true 防止报错
             sudo systemctl stop myapp-server || true
 
-            echo "==> [3/4] 替换二进制文件..."
+            echo "==> [2/3] 替换二进制文件..."
             mv "$BIN_DIR/server.new" "$BIN_DIR/server"
             chmod +x "$BIN_DIR/server"
 
-            echo "==> [4/4] 启动服务（含数据库迁移）..."
+            echo "==> [3/3] 启动服务（含数据库迁移）..."
             # 检查 service 文件是否存在（首次部署需先执行 scripts/server-setup.sh）
             if [ ! -f /etc/systemd/system/myapp-server.service ]; then
               echo "ERROR: systemd service 'myapp-server' 不存在，请先在服务器上执行 scripts/server-setup.sh"
