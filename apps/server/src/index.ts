@@ -1,6 +1,6 @@
 import process from 'node:process'
 import consola from 'consola'
-import { migrate } from 'drizzle-orm/libsql/migrator'
+import { migrate } from 'drizzle-orm/bun-sqlite/migrator'
 import { app } from './app'
 import { db } from './db'
 
