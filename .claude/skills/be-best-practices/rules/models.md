@@ -4,7 +4,7 @@
 
 ## 概述
 
-使用 Elysia 内置的 TypeBox（`t` 对象）定义请求/响应 schema，通过 `new Elysia().model({ ... })` 注册，key 遵循 `domain.purpose` 命名约定。
+使用 Elysia 内置的 TypeBox（`t` 对象）定义请求/响应 schema，通过 `new Elysia().model({ ... })` 注册，key 遵循 `domain.purpose` 命名约定。响应 schema 通过 `responseContract` 工厂创建，保证与统一响应协议一致。
 
 ## 规则
 
@@ -28,52 +28,97 @@ models/user.ts         // 缺少 Model 后缀
 
 ---
 
+### 提取共享 schema 变量
+
+将多处复用的子 schema 提取为 const 变量，供 `user.item`、`user.responseItem`、`user.responseList` 共用，避免重复定义。
+
+**✅ 正确写法：**
+```ts
+// 来自 src/models/userModel.ts
+const userItemSchema = t.Object({
+  id: t.Number({ description: 'User ID' }),
+  name: t.String({ description: 'User name' }),
+  createdAt: t.Date({ description: 'Creation date' }),
+})
+
+export const UserModel = new Elysia()
+  .model({
+    'user.create': t.Object({ ... }),
+    'user.item': userItemSchema,              // 引用变量
+    'user.list': t.Array(userItemSchema),    // 引用变量
+    'user.responseItem': responseContract.createSuccessResponseSchema(userItemSchema),
+    'user.responseList': responseContract.createSuccessResponseSchema(t.Array(userItemSchema)),
+  })
+```
+
+**❌ 错误写法：**
+```ts
+// 不要在每个 model key 里重复定义相同的字段
+export const UserModel = new Elysia()
+  .model({
+    'user.item': t.Object({ id: t.Number(...), name: t.String(...), createdAt: t.Date(...) }),
+    'user.list': t.Array(t.Object({ id: t.Number(...), name: t.String(...), createdAt: t.Date(...) })),
+    'user.responseItem': responseContract.createSuccessResponseSchema(
+      t.Object({ id: t.Number(...), name: t.String(...), createdAt: t.Date(...) })  // 第三次重复
+    ),
+  })
+
+// 不要用 t.Ref 或 t.Recursive 引用（不必要的复杂性）
+const $userItem = t.Object({ ... })
+'user.item': t.Ref($userItem)
+```
+
+---
+
 ### Key 命名约定：domain.purpose
 
-Model key 格式为 `domain.purpose`（小写，英文点分隔）。常见 purpose：`create`（请求体）、`item`（单个响应）、`list`（列表响应）、`update`（更新请求体）。
+Model key 格式为 `domain.purpose`（小写，英文点分隔）。必须包含的 key：`domain.create`（请求体）、`domain.item`（裸实体）、`domain.list`（裸列表）、`common.error`（错误响应）、`domain.responseItem`（成功单条包裹）、`domain.responseList`（成功列表包裹）。
 
 **✅ 正确写法：**
 ```ts
 // 来自 src/models/userModel.ts
 export const UserModel = new Elysia()
   .model({
-    'user.create': t.Object({ ... }),
-    'user.item':   t.Object({ ... }),
-    'user.list':   t.Array(t.Object({ ... })),
+    'user.create':       t.Object({ ... }),                                              // POST body
+    'user.item':         userItemSchema,                                                 // 裸实体（内部复用）
+    'user.list':         t.Array(userItemSchema),                                        // 裸列表（内部复用）
+    'common.error':      responseContract.createErrorResponseSchema(),                   // 错误响应
+    'user.responseItem': responseContract.createSuccessResponseSchema(userItemSchema),   // 成功单条包裹
+    'user.responseList': responseContract.createSuccessResponseSchema(t.Array(userItemSchema)),  // 成功列表包裹
   })
 
 // post domain 示例
 export const PostModel = new Elysia()
   .model({
-    'post.create': t.Object({ ... }),
-    'post.update': t.Object({ ... }),
-    'post.item':   t.Object({ ... }),
-    'post.list':   t.Array(t.Object({ ... })),
-  })
-
-// auth domain 示例
-export const AuthModel = new Elysia()
-  .model({
-    'auth.login':  t.Object({ ... }),
-    'auth.token':  t.Object({ ... }),
+    'post.create':       t.Object({ ... }),
+    'post.item':         postItemSchema,
+    'post.list':         t.Array(postItemSchema),
+    'common.error':      responseContract.createErrorResponseSchema(),
+    'post.responseItem': responseContract.createSuccessResponseSchema(postItemSchema),
+    'post.responseList': responseContract.createSuccessResponseSchema(t.Array(postItemSchema)),
   })
 ```
 
 **❌ 错误写法：**
 ```ts
-// 不要用 camelCase key
-'userCreate': t.Object({ ... })        // 应为 'user.create'
-'UserCreate': t.Object({ ... })        // PascalCase
+// key 用 camelCase 分隔
+'userCreate': t.Object({ ... })     // 应为 'user.create'
+'userResponseItem': t.Object({ ... }) // 应为 'user.responseItem'
 
-// 不要用下划线分隔
-'user_create': t.Object({ ... })       // 应为 'user.create'
-
-// 不要跨 domain 混合在同一个 model 文件
-export const AppModel = new Elysia()
+// 缺少 common.error 定义（controller 无法引用）
+export const UserModel = new Elysia()
   .model({
-    'user.create': t.Object({ ... }),  // user domain
-    'post.create': t.Object({ ... }),  // post domain — 应拆分为独立文件
+    'user.create': t.Object({ ... }),
+    'user.responseItem': responseContract.createSuccessResponseSchema(userItemSchema),
+    // 缺少 'common.error'，controller 中的 400/422/500 响应类型无法注册
   })
+
+// 手写 { code, msg, data } 结构代替 responseContract 工厂
+'user.responseItem': t.Object({
+  code: t.Literal(0),
+  msg: t.String(),
+  data: userItemSchema,
+})  // 应使用 responseContract.createSuccessResponseSchema(userItemSchema)
 ```
 
 ---
@@ -89,38 +134,34 @@ export const AppModel = new Elysia()
   name: t.String({ description: 'User name', minLength: 1 }),
 }),
 
-'user.item': t.Object({
+const userItemSchema = t.Object({
   id: t.Number({ description: 'User ID' }),
   name: t.String({ description: 'User name' }),
   createdAt: t.Date({ description: 'Creation date' }),
-}),
+})
 
-// 带更多字段的 post.create 示例
+// 带约束的字段
 'post.create': t.Object({
   title: t.String({ description: 'Post title', minLength: 1, maxLength: 200 }),
   content: t.String({ description: 'Post body content' }),
-  authorId: t.Number({ description: 'Author user ID' }),
-}),
+})
 ```
 
 **❌ 错误写法：**
 ```ts
 // 缺少 description
-'user.create': t.Object({
+const userItemSchema = t.Object({
+  id: t.Number(),
   name: t.String(),
 })
 
-// description 不够有意义
-'user.item': t.Object({
-  id: t.Number({ description: 'id' }),       // 太简短
-  name: t.String({ description: 'string' }), // 描述类型而非含义
-})
+// description 没有语义
+id: t.Number({ description: 'number' })    // 描述类型而非含义
 
 // 只有部分字段有 description
-'user.item': t.Object({
-  id: t.Number({ description: 'User ID' }),  // 有
-  name: t.String(),                          // 缺少
-  createdAt: t.Date(),                       // 缺少
+const userItemSchema = t.Object({
+  id: t.Number({ description: 'User ID' }),
+  name: t.String(),   // 缺少 description
 })
 ```
 
@@ -128,7 +169,7 @@ export const AppModel = new Elysia()
 
 ### 校验规则写在 model 中
 
-字段约束（`minLength`、`minimum`、`maxLength` 等）在 model 定义时声明，不在 service 或 controller 中重复校验。
+字段约束（`minLength`、`minimum` 等）在 model 定义时声明，不在 service 或 controller 中重复校验。
 
 **✅ 正确写法：**
 ```ts
@@ -148,16 +189,15 @@ bio: t.Optional(t.String({ description: 'User bio', maxLength: 500 })),
 static async create(data: { name: string }) {
   if (!data.name || data.name.trim() === '')
     throw new Error('name is required')  // model 层应已处理
-  ...
 }
 
 // model 中无约束，在 controller handler 里检查
-.post('/', ({ body }) => {
+.post('/', async ({ body }) => {
   if (body.name.length === 0) throw new Error('empty name')
   return UserService.create(body)
 })
 
-// 定义了 minLength 却在 service 里二次校验（重复）
+// 定义了 minLength 却在 service 里二次校验
 name: t.String({ description: 'User name', minLength: 1 }),
 // 然后在 service 里：
 if (data.name.length < 1) throw new Error('...')

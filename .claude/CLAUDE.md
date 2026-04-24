@@ -10,13 +10,13 @@
 | `bun run lint` | 检查全部代码 |
 | `bun run lint:fix` | 自动修复可修复的 lint 问题 |
 | `bun run codegen:api` | 从后端 OpenAPI spec 生成前端类型，更新 `apps/web/src/services/schema.gen.ts` |
-| `bun run db:migrate` | 运行 Prisma 数据库迁移 |
-| `bun run db:studio` | 打开 Prisma Studio |
+| `bun run db:migrate` | 运行 Drizzle 数据库迁移 |
+| `bun run db:studio` | 打开 Drizzle Studio |
 
 ## Stack
 
 - **Monorepo**: Bun workspaces (`apps/*`, `packages/*`)
-- **Backend** (`apps/server`): Bun + Elysia 1.4.28 + Drizzle ORM 0.45.2 + SQLite (bun:sqlite)
+- **Backend** (`apps/server`): Bun + Elysia 1.4.28 + Drizzle ORM 0.45.2 + SQLite (bun:sqlite) + elysia-plugin-response (workspace)
 - **Frontend** (`apps/web`): React 19.2.5 + Vite 8.0.9 + React Router 7.14.1 + Zustand 5.0.12 + openapi-fetch 0.17.0
 - **Shared** (`packages/shared`): Cross-app types and utilities
 - **Linting**: `@antfu/eslint-config` with `lint-staged` + `commitlint` git hooks
@@ -99,7 +99,7 @@ packages/
 
 - `apps/web/src/services/schema.gen.ts` 由 openapi-typescript 自动生成，运行 `bun codegen:api` 更新，**禁止手动修改**
 - API 类型通过 `components['schemas']['...']` 从生成文件导入（如 `type User = components['schemas']['user.item']`）
-- API 请求使用 openapi-fetch 解构模式：`const { data, error } = await client.GET('/api/...')`，错误检查用 `if (error) throw error`
+- API 请求使用 openapi-fetch 解构模式：`const { data, error } = await client.GET('/api/...')`，错误时用 `throw new Error(getApiErrorMessage(error))`，响应数据用 `unwrapApiResponse(data as EnvelopeType)` 提取
 - Zustand store 统一通过 `createStore<T>(name, initializer)` 工厂创建（`store/createStore.ts`），自动注入 devtools
 - 所有异步 action 在 store 内部定义，组件只调用 store 暴露的方法，不直接调用 `client`
 - 使用 `verbatimModuleSyntax`，类型导入必须用 `import type`（如 `import type { StateCreator } from 'zustand'`）

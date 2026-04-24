@@ -106,32 +106,43 @@ export const useStore = createStore('MyStore', set => ({
 
 ### 异步 Action 模式
 
-异步 action 在 store 内部定义，使用 openapi-fetch 解构模式，错误直接 throw。
+异步 action 在 store 内部定义，使用 openapi-fetch 解构模式，通过 `unwrapApiResponse` 提取数据，通过 `getApiErrorMessage` 提取错误消息后 throw。
 
 **✅ 正确写法：**
 ```ts
 // 来自 src/store/users.ts
+import { client, getApiErrorMessage, unwrapApiResponse } from '../services'
+import type { components } from '../services'
+
+type User = components['schemas']['user.item']
+type UserListEnvelope = components['schemas']['user.responseList']
+type UserItemEnvelope = components['schemas']['user.responseItem']
+
+// GET 操作：先 set loading，error 时恢复 loading 再 throw
 fetchUsers: async () => {
   set({ loading: true })
   const { data, error } = await client.GET('/api/users/')
-  if (error)
-    throw error
-  set({ users: data, loading: false })
+  if (error) {
+    set({ loading: false })
+    throw new Error(getApiErrorMessage(error))
+  }
+  set({ users: unwrapApiResponse((data as UserListEnvelope)), loading: false })
 },
 
-// POST 操作（乐观更新）
+// POST 操作：无 loading 状态，error 直接 throw，成功后追加到列表
 addUser: async (name) => {
   const { data, error } = await client.POST('/api/users/', { body: { name } })
   if (error)
-    throw error
-  set(state => ({ users: [...state.users, data] }))
+    throw new Error(getApiErrorMessage(error))
+  const createdUser = unwrapApiResponse((data as UserItemEnvelope))
+  set(state => ({ users: [...state.users, createdUser] }))
 },
 
-// 删除操作示例
+// DELETE 操作：无需解包响应，错误直接 throw
 deleteUser: async (id) => {
-  const { error } = await client.DELETE(`/api/users/${id}`)
+  const { error } = await client.DELETE('/api/users/{id}', { params: { path: { id } } })
   if (error)
-    throw error
+    throw new Error(getApiErrorMessage(error))
   set(state => ({ users: state.users.filter(u => u.id !== id) }))
 },
 ```
@@ -145,12 +156,25 @@ function Home() {
   }, [])
 }
 
+// 不要直接 throw error 对象（与统一响应协议不兼容）
+fetchUsers: async () => {
+  const { data, error } = await client.GET('/api/users/')
+  if (error)
+    throw error  // 应改为 throw new Error(getApiErrorMessage(error))
+},
+
+// 不要手动访问 data.data（类型不安全，应用 unwrapApiResponse）
+fetchUsers: async () => {
+  const { data } = await client.GET('/api/users/')
+  set({ users: data?.data ?? [] })  // 应改为 unwrapApiResponse((data as UserListEnvelope))
+},
+
 // 不要忽略 error（静默失败）
 fetchUsers: async () => {
   const { data } = await client.GET('/api/users/')
   if (data)
     set({ users: data })
-  // error 被忽略
+  // error 被忽略，set loading 也被忽略
 },
 
 // 不要在 action 外部 set loading（违背封装）

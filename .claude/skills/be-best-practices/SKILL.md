@@ -12,6 +12,7 @@ user-invocable: false
 - Elysia 1.4.28（HTTP 框架，TypeBox 类型验证，内置 Swagger）
 - Drizzle ORM 0.45.2（SQL schema 定义 + 类型推断）
 - SQLite（bun:sqlite）+ WAL 模式
+- elysia-plugin-response（workspace）：统一 `{ code, msg, data }` 响应协议插件
 - consola 3.4.2（日志）
 - bun:test（内置单元测试框架）
 - TypeScript strict 模式 + moduleResolution nodenext + `@/*` 路径别名
@@ -41,6 +42,7 @@ src/
 | `rules/controllers.md` | 创建或修改 Elysia controller 时 |
 | `rules/services.md` | 创建或修改 service 类时 |
 | `rules/models.md` | 定义 Elysia TypeBox model 时 |
+| `rules/response-protocol.md` | 任何涉及 HTTP 响应结构的改动 |
 | `rules/database.md` | 修改 Drizzle schema 或编写数据库查询时 |
 | `rules/typescript.md` | 定义类型或使用路径别名时 |
 | `rules/testing.md` | 编写或修改 bun:test 测试时 |

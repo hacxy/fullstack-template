@@ -4,170 +4,165 @@
 
 ## 概述
 
-使用 openapi-fetch 作为类型安全 HTTP 客户端，类型从 `schema.gen.ts` 自动生成，API 调用封装在 Zustand store action 内。
+使用 openapi-fetch 作为类型安全 HTTP 客户端，类型从 `schema.gen.ts` 自动生成。`client.ts` 导出 `client`、`unwrapApiResponse`、`getApiErrorMessage` 三个工具；store action 通过这些工具处理统一响应信封 `{ code, msg, data }`。
 
 ## 规则
 
-### Client 初始化
+### Client 文件导出内容
 
-在 `src/services/client.ts` 中创建唯一的 openapi-fetch client 实例，以 `VITE_API_URL` 环境变量作为 baseUrl，导出 `client`。
+`src/services/client.ts` 除了 `client` 实例外，还导出 `unwrapApiResponse`、`getApiErrorMessage` 和 `ApiEnvelope` 类型。从 `../services` barrel 统一导入，不直接引用具体文件。
 
 **✅ 正确写法：**
 ```ts
 // 来自 src/services/client.ts
-import type { paths } from './schema.gen'
-import createClient from 'openapi-fetch'
+export const client = createClient<paths>({ ... })
+export function unwrapApiResponse<TEnvelope extends ApiEnvelope>(payload: TEnvelope): TEnvelope['data'] { ... }
+export function getApiErrorMessage(error: unknown): string { ... }
+export type ApiEnvelope = SchemaMap[EnvelopeSchemaName]
 
-export const client = createClient<paths>({
-  baseUrl: import.meta.env.VITE_API_URL ?? 'http://localhost:3000',
-})
+// 来自 src/services/index.ts — barrel 统一导出
+export { client, getApiErrorMessage, unwrapApiResponse } from './client'
+export type { ApiEnvelope } from './client'
+export type { components, paths } from './schema.gen'
+
+// store 中从 barrel 导入
+import type { components } from '../services'
+import { client, getApiErrorMessage, unwrapApiResponse } from '../services'
 ```
 
 **❌ 错误写法：**
 ```ts
-// 不要在组件或 store 里创建 client
-// store/users.ts
-const client = createClient<paths>({ baseUrl: '...' })  // 应在 services/client.ts 中统一创建
+// 不要绕过 barrel，直接从具体文件导入
+import { client } from '../services/client'
+import { unwrapApiResponse } from '../services/client'
 
-// 不要硬编码 baseUrl，忽略环境变量
-export const client = createClient<paths>({
-  baseUrl: 'http://localhost:3000',  // 应读 VITE_API_URL
+// 不要在 store 里自己实现 unwrap 逻辑
+const result = data?.data  // 手动取 data.data，应使用 unwrapApiResponse
+
+// 不要忘记在 barrel index.ts 中导出新增的工具函数
+// 若在 client.ts 新增了函数，必须同步更新 services/index.ts
+```
+
+---
+
+### 响应解包：unwrapApiResponse
+
+后端响应结构为 `{ code: 0, msg: 'ok', data: T }`，使用 `unwrapApiResponse()` 提取 `data` 字段，传入时需用信封类型断言。
+
+**✅ 正确写法：**
+```ts
+// 来自 src/store/users.ts
+type UserListEnvelope = components['schemas']['user.responseList']
+type UserItemEnvelope = components['schemas']['user.responseItem']
+
+// GET 响应解包
+const { data, error } = await client.GET('/api/users/')
+if (error) { ... }
+set({
+  users: unwrapApiResponse((data as UserListEnvelope)),
+  loading: false,
 })
 
-// 不要重复创建多个 client 实例
-export const userClient = createClient<paths>({ baseUrl: '...' })
-export const postClient = createClient<paths>({ baseUrl: '...' })  // 应共用同一个 client
+// POST 响应解包
+const { data, error } = await client.POST('/api/users/', { body: { name } })
+if (error) { ... }
+const createdUser = unwrapApiResponse((data as UserItemEnvelope))
+set(state => ({ users: [...state.users, createdUser] }))
+```
+
+**❌ 错误写法：**
+```ts
+// 不要直接访问 data.data（类型不安全，语义不清晰）
+const { data } = await client.GET('/api/users/')
+set({ users: data?.data ?? [] })
+
+// 不要用 as any 绕过类型
+set({ users: (data as any).data })
+
+// 不要省略信封类型断言（openapi-fetch 的推断类型可能不够精确）
+set({ users: unwrapApiResponse(data) })  // data 类型可能不匹配 ApiEnvelope
+```
+
+---
+
+### 错误处理：getApiErrorMessage
+
+错误时用 `getApiErrorMessage(error)` 提取错误消息，包装为 `new Error()` throw，不直接 throw `error` 对象。
+
+**✅ 正确写法：**
+```ts
+// 来自 src/store/users.ts — GET 错误
+const { data, error } = await client.GET('/api/users/')
+if (error) {
+  set({ loading: false })
+  throw new Error(getApiErrorMessage(error))
+}
+
+// POST 错误（不需要 set loading=false，无 loading 状态）
+const { data, error } = await client.POST('/api/users/', { body: { name } })
+if (error)
+  throw new Error(getApiErrorMessage(error))
+
+// 另一个 DELETE 示例
+const { error } = await client.DELETE('/api/users/{id}', { params: { path: { id } } })
+if (error)
+  throw new Error(getApiErrorMessage(error))
+```
+
+**❌ 错误写法：**
+```ts
+// 不要直接 throw error 对象（旧模式，与新的错误协议不兼容）
+if (error)
+  throw error
+
+// 不要静默忽略 error
+const { data } = await client.GET('/api/users/')
+set({ users: data?.data ?? [] })  // error 被忽略
+
+// 不要手动解析 error 的 msg 字段（应用 getApiErrorMessage 统一处理）
+if (error)
+  throw new Error((error as any).msg || 'Request failed')
 ```
 
 ---
 
 ### 类型来源
 
-所有 API 路径类型（`paths`）和 schema 类型（`components`）来自 `src/services/schema.gen.ts`，该文件由 `bun codegen:api` 生成，**禁止手动修改**。
+所有 API 类型从 `schema.gen.ts` 的 `components['schemas']` 提取，包括信封类型。
 
 **✅ 正确写法：**
 ```ts
-// 来自 src/services/index.ts — barrel 导出
-export { client } from './client'
-export type { components, paths } from './schema.gen'
-
-// 来自 src/store/users.ts — 从 barrel 导入
-import type { components } from '../services'
-import { client } from '../services'
-
+// 来自 src/store/users.ts — 裸实体类型
 type User = components['schemas']['user.item']
 
-// 从 services barrel 导入 paths 类型
-import type { paths } from '../services'
+// 信封类型（用于 unwrapApiResponse 的类型断言）
+type UserListEnvelope = components['schemas']['user.responseList']
+type UserItemEnvelope = components['schemas']['user.responseItem']
+
+// ApiEnvelope 联合类型（所有 *.response* schema 的联合）
+import type { ApiEnvelope } from '../services'
 ```
 
 **❌ 错误写法：**
 ```ts
-// 手动修改 schema.gen.ts
-// ❌ 直接编辑 src/services/schema.gen.ts
+// 不要手写类型
+interface User { id: number; name: string }
+interface UserResponse { code: 0; msg: string; data: User }
 
-// 手写与 schema.gen.ts 等效的类型
-interface User {
-  id: number
-  name: string
-}
+// 不要用 any
+const user: any = unwrapApiResponse(data)
 
-// 绕过 barrel，直接从文件导入
-import type { components } from '../services/schema.gen'  // 应从 '../services'
-import { client } from '../services/client'               // 应从 '../services'
+// 不要修改 schema.gen.ts（禁止手动修改自动生成文件）
 ```
 
 ---
 
-### 请求调用方式
+### codegen 更新
 
-使用 openapi-fetch 的解构模式，永远解构出 `data` 和 `error`。
+修改后端 API 后，运行以下命令重新生成类型：
 
-**✅ 正确写法：**
-```ts
-// GET — 来自 src/store/users.ts
-const { data, error } = await client.GET('/api/users/')
-if (error)
-  throw error
-set({ users: data, loading: false })
-
-// POST with body — 来自 src/store/users.ts
-const { data, error } = await client.POST('/api/users/', { body: { name } })
-if (error)
-  throw error
-set(state => ({ users: [...state.users, data] }))
-
-// DELETE（假设 API 存在）
-const { error } = await client.DELETE('/api/users/{id}', { params: { path: { id } } })
-if (error)
-  throw error
+```bash
+bun codegen:api
 ```
 
-**❌ 错误写法：**
-```ts
-// 不要忽略 error 字段
-const { data } = await client.GET('/api/users/')
-set({ users: data ?? [] })  // data 可能是 undefined
-
-// 不要用 .then() 链式调用
-client.GET('/api/users/').then(({ data }) => set({ users: data }))
-
-// 不要用 try/catch 包裹（openapi-fetch 不抛异常，通过 error 字段报错）
-try {
-  const res = await client.GET('/api/users/')
-  set({ users: res.data })
-} catch (e) {
-  console.error(e)  // openapi-fetch 网络错误外基本不走这里
-}
-```
-
----
-
-### 请求调用位置
-
-API 调用在 Zustand store action 内部，组件只调用 store 暴露的方法。
-
-**✅ 正确写法：**
-```ts
-// store action 内部调用 client
-fetchUsers: async () => {
-  set({ loading: true })
-  const { data, error } = await client.GET('/api/users/')
-  if (error) throw error
-  set({ users: data, loading: false })
-},
-
-// 组件只调用 action
-const { fetchUsers } = useUsersStore()
-useEffect(() => { fetchUsers() }, [fetchUsers])
-
-// 新增操作也封装在 store
-addUser: async (name) => {
-  const { data, error } = await client.POST('/api/users/', { body: { name } })
-  if (error) throw error
-  set(state => ({ users: [...state.users, data] }))
-},
-```
-
-**❌ 错误写法：**
-```ts
-// 不要在组件 useEffect 里直接调用 client
-useEffect(() => {
-  client.GET('/api/users/').then(({ data }) => setUsers(data))
-}, [])
-
-// 不要在组件事件处理中直接调用 client
-async function handleSubmit() {
-  const { data } = await client.POST('/api/users/', { body: { name } })
-  setUsers(prev => [...prev, data])
-}
-
-// 不要在自定义 hook 中直接调用 client（应通过 store）
-function useUsers() {
-  const [users, setUsers] = useState([])
-  useEffect(() => {
-    client.GET('/api/users/').then(({ data }) => setUsers(data))
-  }, [])
-  return users
-}
-```
+脚本从 `http://localhost:3000/scalar/json` 拉取 OpenAPI spec，写入 `src/services/schema.gen.ts`，并自动运行 `eslint --fix`。新的 `user.responseItem`、`user.responseList`、`common.error` 等信封 schema 会随之更新。

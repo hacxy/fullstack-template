@@ -4,7 +4,7 @@
 
 ## 概述
 
-`index.ts` 只负责启动（migration + listen），`app.ts` 负责组装中间件和 controller，两者职责分离。
+`index.ts` 只负责启动（migration + listen），`app.ts` 负责组装中间件和 controller，两者职责分离。中间件注册顺序固定：cors → response plugin → swagger → controllers。
 
 ## 规则
 
@@ -50,45 +50,52 @@ app.listen(3000)  // 生产环境首次启动会缺少表结构
 
 ---
 
-### app.ts 职责
+### app.ts 中间件注册顺序
 
-使用链式调用组装 cors → swagger → controllers，导出 `app` 实例和 `App` 类型。
+链式调用顺序固定：**cors → `response()` plugin → swagger → controllers**，不得调整。`response()` 必须在 swagger 和 controllers 之前注册，使统一响应包装对所有路由生效。
 
 **✅ 正确写法：**
 ```ts
-// 来自 src/app.ts — 链式组装
+// 来自 src/app.ts
+import { response } from 'elysia-plugin-response'
+
 export const app = new Elysia()
   .use(cors({ origin: process.env.CORS_ORIGIN ?? 'http://localhost:5173' }))
-  .get('/', () => ({ status: 'ok' }))
+  .use(response())          // ← 统一响应插件，必须在 swagger 和 controllers 之前
   .use(swagger({ path: '/scalar', documentation: { ... } }))
   .use(userController)
 
-// 导出 App 类型（供 Eden treaty 等客户端推断使用）
 export type App = typeof app
 
-// 新增 controller 时追加
+// 注册多个 controller 时继续追加在末尾
 export const app = new Elysia()
   .use(cors(...))
+  .use(response())
   .use(swagger(...))
   .use(userController)
-  .use(postController)  // 追加在末尾
+  .use(postController)   // 追加
 ```
 
 **❌ 错误写法：**
 ```ts
+// response() 放在 swagger 之后（swagger 文档不会反映统一响应结构）
+export const app = new Elysia()
+  .use(cors(...))
+  .use(swagger(...))
+  .use(response())         // 顺序错误
+  .use(userController)
+
+// 忘记注册 response()（controller 返回原始数据，不包裹 { code, msg, data }）
+export const app = new Elysia()
+  .use(cors(...))
+  .use(swagger(...))
+  .use(userController)     // 缺少 .use(response())
+
 // 不要在 app.ts 里写业务逻辑
 export const app = new Elysia()
   .use(cors(...))
-  .get('/api/users', () => db.select().from(users))  // 直接写查询
-
-// 不要内联路由而不抽成 controller
-export const app = new Elysia()
-  .get('/api/users', () => UserService.findAll())   // 应封装为 userController
-  .post('/api/users', ({ body }) => UserService.create(body))
-
-// 不要忘记导出 App 类型
-export const app = new Elysia().use(cors(...))
-// 缺少 export type App = typeof app
+  .use(response())
+  .get('/api/users', () => db.select().from(users))  // 直接写查询，应封装为 controller
 ```
 
 ---
@@ -105,6 +112,7 @@ import { userController } from './controllers/userController.js'
 
 export const app = new Elysia()
   .use(cors(...))
+  .use(response())
   .use(swagger(...))
   .use(userController)
   .use(postController)
@@ -112,7 +120,7 @@ export const app = new Elysia()
 // controller 文件中导出具名常量
 export const postController = new Elysia({ prefix: '/api/posts' })
   .use(PostModel)
-  .get('/', () => PostService.findAll(), { ... })
+  .get('/', async () => PostService.findAll(), { ... })
 ```
 
 **❌ 错误写法：**
@@ -124,12 +132,10 @@ app.use(postController)  // 应在 app.ts
 // 不要在 app.ts 内联定义 controller 逻辑
 export const app = new Elysia()
   .use(new Elysia({ prefix: '/api/posts' })  // 应提取为独立 controller 文件
-    .get('/', () => PostService.findAll()))
+    .get('/', async () => PostService.findAll()))
 
-// 不要在 controller 间有顺序依赖（每个 controller 应独立）
-export const app = new Elysia()
-  .use(authController)    // ← 其他 controller 不能依赖此 controller 的副作用
-  .use(userController)
+// 不要跳过 response() 直接在 controller 里手动包装响应
+.get('/', async () => ({ code: 0, msg: 'ok', data: await PostService.findAll() }))
 ```
 
 ---
@@ -153,12 +159,11 @@ const dbPath = (process.env.DATABASE_URL ?? 'file:./sqlite.db').replace(/^file:/
 **❌ 错误写法：**
 ```ts
 // 无默认值，环境变量缺失会 crash
-.use(cors({ origin: process.env.CORS_ORIGIN! }))  // 强制非空，缺失就报错
+.use(cors({ origin: process.env.CORS_ORIGIN! }))
 
 // 默认值硬编码生产地址
-.use(cors({ origin: process.env.CORS_ORIGIN ?? 'https://myapp.com' }))  // 开发时跨域
+.use(cors({ origin: process.env.CORS_ORIGIN ?? 'https://myapp.com' }))
 
 // 不使用环境变量，完全硬编码
 app.listen(3000, ...)
-.use(cors({ origin: 'http://localhost:5173' }))
 ```
