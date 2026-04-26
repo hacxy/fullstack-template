@@ -6,17 +6,17 @@ const successResponse = <T>(data: T) => ({ code: 0, msg: 'ok', data })
 test('homepage renders correctly', async ({ page }) => {
   await page.route(API_USERS, route => route.fulfill({ json: successResponse([]) }))
   await page.goto('/')
-  await expect(page.getByRole('heading', { name: 'Users' })).toBeVisible()
-  await expect(page.getByPlaceholder('User name')).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Add user' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Users Demo' })).toBeVisible()
+  await expect(page.getByPlaceholder('Enter a name...')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Add User' })).toBeVisible()
 })
 
 test('add user button is disabled when input is empty', async ({ page }) => {
   await page.route(API_USERS, route => route.fulfill({ json: successResponse([]) }))
   await page.goto('/')
-  await expect(page.getByRole('button', { name: 'Add user' })).toBeDisabled()
-  await page.getByPlaceholder('User name').fill('Alice')
-  await expect(page.getByRole('button', { name: 'Add user' })).toBeEnabled()
+  await expect(page.getByRole('button', { name: 'Add User' })).toBeDisabled()
+  await page.getByPlaceholder('Enter a name...').fill('Alice')
+  await expect(page.getByRole('button', { name: 'Add User' })).toBeEnabled()
 })
 
 test('displays users fetched from API', async ({ page }) => {
@@ -48,8 +48,8 @@ test('can add a user', async ({ page }) => {
     return route.fulfill({ json: successResponse({ id: 2, name: 'Bob' }) })
   })
   await page.goto('/')
-  await page.getByPlaceholder('User name').fill('Bob')
-  await page.getByRole('button', { name: 'Add user' }).click()
+  await page.getByPlaceholder('Enter a name...').fill('Bob')
+  await page.getByRole('button', { name: 'Add User' }).click()
   await expect(page.getByText('Bob')).toBeVisible()
 })
 
@@ -61,7 +61,7 @@ test('shows loading state while fetching users', async ({ page }) => {
   })
 
   await page.goto('/')
-  await expect(page.getByText('Loading...')).toBeVisible()
+  await expect(page.getByText('Loading…')).toBeVisible()
   await expect(page.getByText('No users yet. Add one above.')).toBeVisible()
 })
 
@@ -79,9 +79,9 @@ test('adds user with trimmed name and clears input', async ({ page }) => {
   })
 
   await page.goto('/')
-  const input = page.getByPlaceholder('User name')
+  const input = page.getByPlaceholder('Enter a name...')
   await input.fill('  Bob  ')
-  await page.getByRole('button', { name: 'Add user' }).click()
+  await page.getByRole('button', { name: 'Add User' }).click()
 
   await expect.poll(() => postedName).toBe('Bob')
   await expect(input).toHaveValue('')

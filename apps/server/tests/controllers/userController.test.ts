@@ -79,6 +79,25 @@ describe('POST /api/users', () => {
     expect(body.data.id).toBe(3)
   })
 
+  it('strips null-valued fields from response data', async () => {
+    const created = { id: 3, name: 'Charlie', createdAt: new Date(), meta: null }
+    mockReturning.mockResolvedValue([created])
+
+    const res = await app.handle(
+      new Request('http://localhost/api/users/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: 'Charlie' }),
+      }),
+    )
+
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.code).toBe(0)
+    expect(body.data.name).toBe('Charlie')
+    expect(body.data.meta).toBeUndefined()
+  })
+
   it('returns 422 when body is missing name', async () => {
     const res = await app.handle(
       new Request('http://localhost/api/users/', {
