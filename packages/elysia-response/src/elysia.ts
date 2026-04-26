@@ -16,16 +16,14 @@ export interface ApiResponse<T> {
 const errorSchema = t.Object({
   code: t.Number({ description: 'Business error code for failed requests' }),
   msg: t.String({ description: 'Human readable error message' }),
-  data: t.Null({ description: 'Always null for error payloads' }),
 })
 
 const ERROR_SCHEMA_JSON = {
   type: 'object',
-  required: ['code', 'msg', 'data'],
+  required: ['code', 'msg'],
   properties: {
     code: { type: 'integer', description: 'Business error code for failed requests' },
     msg: { type: 'string', description: 'Human readable error message' },
-    data: { type: 'null', description: 'Always null for error payloads' },
   },
 }
 

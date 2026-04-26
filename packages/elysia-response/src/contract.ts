@@ -16,14 +16,14 @@ export function createSuccessResponse<T>(data: T, message = 'ok') {
 }
 
 export function createErrorResponse(code: number, message: string) {
-  return { code, msg: message, data: null }
+  return { code, msg: message }
 }
 
 export function isResponseEnvelope(payload: unknown): boolean {
   if (!payload || typeof payload !== 'object')
     return false
   const target = payload as Record<string, unknown>
-  return typeof target.code === 'number' && typeof target.msg === 'string' && 'data' in target
+  return typeof target.code === 'number' && typeof target.msg === 'string'
 }
 
 export function resolveErrorMapping(contextCode: string | number): ErrorMapping {
