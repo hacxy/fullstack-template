@@ -92,6 +92,7 @@ packages/
 | `PORT` | 监听端口（默认 `3000`） |
 | `CORS_ORIGIN` | 允许的跨域来源（默认 `http://localhost:5173`） |
 | `MIGRATIONS_DIR` | 生产环境 migration 文件目录（构建二进制时使用） |
+| `SERVER_URL` | 生产环境服务器地址，设置后会追加到 Swagger servers 列表 |
 
 ## Key Conventions
 

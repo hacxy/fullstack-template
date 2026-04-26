@@ -21,7 +21,8 @@ export const app = new Elysia()
         },
       },
       servers: [
-        { url: 'http://localhost:3000', description: 'Local development server' },
+        { url: `http://localhost:${process.env.PORT ?? 3000}`, description: 'Local development server' },
+        ...(process.env.SERVER_URL ? [{ url: process.env.SERVER_URL, description: 'Production server' }] : []),
       ],
     },
   }))

@@ -228,6 +228,10 @@ function buildServerSetupScript(config: Config): string {
   const serviceName = `${config.projectName}-server`
   const appUser = config.projectName
 
+  const serverUrl = config.configureNginx
+    ? (config.httpsMethod !== 'none' ? `https://${config.domain}` : `http://${config.domain}`)
+    : `http://${config.serverHost}:${config.serverPort}`
+
   const serviceContent = `[Unit]
 Description=${config.projectName} Backend Server
 After=network.target
@@ -242,6 +246,7 @@ Environment=NODE_ENV=production
 Environment=PORT=${config.serverPort}
 Environment=DATABASE_URL=file:./sqlite.db
 Environment=CORS_ORIGIN=${config.corsOrigin}
+Environment=SERVER_URL=${serverUrl}
 Restart=on-failure
 RestartSec=5s
 StartLimitIntervalSec=60s
