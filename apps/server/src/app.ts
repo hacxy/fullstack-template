@@ -7,7 +7,7 @@ import { userController } from './controllers/userController.js'
 
 export const app = new Elysia()
   .use(cors({ origin: process.env.CORS_ORIGIN ?? 'http://localhost:5173' }))
-  .use(response())
+  .use(response({ filterNull: true }))
   .use(swagger({
     path: '/scalar',
     documentation: {

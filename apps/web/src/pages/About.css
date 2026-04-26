@@ -1,0 +1,56 @@
+#about-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  max-width: 560px;
+}
+
+#about-desc {
+  font-size: 17px;
+  color: var(--text);
+  text-align: center;
+  line-height: 1.65;
+}
+
+#stack-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  width: 100%;
+  max-width: 560px;
+  padding-bottom: 8px;
+
+  @media (max-width: 1024px) {
+    grid-template-columns: 1fr;
+    max-width: 400px;
+  }
+}
+
+.stack-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 16px 20px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  text-decoration: none;
+  background: var(--bg);
+  transition: border-color 0.2s, box-shadow 0.2s;
+
+  &:hover {
+    border-color: var(--accent-border);
+    box-shadow: var(--shadow);
+  }
+}
+
+.stack-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-h);
+}
+
+.stack-desc {
+  font-size: 13px;
+  color: var(--text);
+}

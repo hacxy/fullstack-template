@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
-import viteLogo from '../assets/vite.svg'
 import { useUsersStore } from '../store'
 import '../App.css'
+import './Home.css'
+
+const TECH_STACK = ['React 19', 'Elysia', 'Drizzle ORM', 'SQLite', 'Zustand', 'TypeScript']
 
 function Home() {
   const { users, loading, fetchUsers, addUser } = useUsersStore()
@@ -25,50 +27,51 @@ function Home() {
   return (
     <>
       <section id="center">
-        <div>
-          <h1>Users</h1>
-          <p>
-            Data from
-            {' '}
-            <code>GET /api/users</code>
-            {' '}
-            — powered by Elysia + Prisma
+        <div id="hero-text">
+          <h1>Fullstack Template</h1>
+          <p id="hero-desc">
+            Production-ready monorepo with typed APIs end-to-end.
           </p>
+          <div id="hero-badges">
+            {TECH_STACK.map(tech => (
+              <span key={tech} className="tech-badge">{tech}</span>
+            ))}
+          </div>
         </div>
 
-        <form onSubmit={handleSubmit} style={{ display: 'flex', gap: '8px' }}>
-          <input
-            value={name}
-            onChange={e => setName(e.target.value)}
-            placeholder="User name"
-            disabled={submitting}
-            style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #444', background: '#1a1a1a', color: 'inherit', fontSize: '1em' }}
-          />
-          <button type="submit" disabled={submitting || !name.trim()} className="counter">
-            {submitting ? 'Adding...' : 'Add user'}
-          </button>
-        </form>
-
-        {loading
-          ? <p style={{ color: '#888' }}>Loading...</p>
-          : users.length === 0
-            ? <p style={{ color: '#888' }}>No users yet. Add one above.</p>
-            : (
-                <ul style={{ listStyle: 'none', padding: 0, margin: 0, width: '100%', maxWidth: '400px' }}>
-                  {users.map(user => (
-                    <li
-                      key={user.id}
-                      style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #333' }}
-                    >
-                      <span>{user.name}</span>
-                      <span style={{ color: '#888', fontSize: '0.85em' }}>
+        <div id="demo-card">
+          <div id="demo-header">
+            <h2>Users Demo</h2>
+            <code>GET · POST /api/users</code>
+          </div>
+          <form onSubmit={handleSubmit} id="user-form">
+            <input
+              className="text-input"
+              value={name}
+              onChange={e => setName(e.target.value)}
+              placeholder="Enter a name..."
+              disabled={submitting}
+            />
+            <button type="submit" disabled={submitting || !name.trim()} className="btn-primary">
+              {submitting ? 'Adding…' : 'Add User'}
+            </button>
+          </form>
+          <div id="user-list">
+            {loading
+              ? <p className="list-hint">Loading…</p>
+              : users.length === 0
+                ? <p className="list-hint">No users yet. Add one above.</p>
+                : users.map(user => (
+                    <div key={user.id} className="user-item">
+                      <span className="user-name">{user.name}</span>
+                      <span className="user-id">
                         #
                         {user.id}
                       </span>
-                    </li>
+                    </div>
                   ))}
-                </ul>
-              )}
+          </div>
+        </div>
       </section>
 
       <div className="ticks"></div>
@@ -79,17 +82,21 @@ function Home() {
             <use href="/icons.svg#documentation-icon"></use>
           </svg>
           <h2>Documentation</h2>
-          <p>Your questions, answered</p>
+          <p>Explore the API and framework docs</p>
           <ul>
             <li>
               <a href="http://localhost:3000/scalar" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                API Docs
+                API Reference
               </a>
             </li>
             <li>
               <a href="https://elysiajs.com/" target="_blank">
                 Learn Elysia
+              </a>
+            </li>
+            <li>
+              <a href="https://orm.drizzle.team/" target="_blank">
+                Drizzle ORM
               </a>
             </li>
           </ul>
@@ -98,16 +105,12 @@ function Home() {
           <svg className="icon" role="presentation" aria-hidden="true">
             <use href="/icons.svg#social-icon"></use>
           </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
+          <h2>Community</h2>
+          <p>Connect with the open-source ecosystem</p>
           <ul>
             <li>
               <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
+                <svg className="button-icon" role="presentation" aria-hidden="true">
                   <use href="/icons.svg#github-icon"></use>
                 </svg>
                 GitHub
@@ -115,11 +118,7 @@ function Home() {
             </li>
             <li>
               <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
+                <svg className="button-icon" role="presentation" aria-hidden="true">
                   <use href="/icons.svg#discord-icon"></use>
                 </svg>
                 Discord
@@ -127,11 +126,7 @@ function Home() {
             </li>
             <li>
               <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
+                <svg className="button-icon" role="presentation" aria-hidden="true">
                   <use href="/icons.svg#x-icon"></use>
                 </svg>
                 X.com

@@ -5,8 +5,11 @@ function RootLayout() {
   return (
     <>
       <nav id="nav">
-        <NavLink to="/" end>Home</NavLink>
-        <NavLink to="/about">About</NavLink>
+        <span id="nav-brand">FST</span>
+        <div id="nav-links">
+          <NavLink to="/" end>Home</NavLink>
+          <NavLink to="/about">About</NavLink>
+        </div>
       </nav>
       <Outlet />
     </>

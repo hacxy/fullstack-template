@@ -13,6 +13,10 @@ export interface ApiResponse<T> {
   data: T
 }
 
+export interface ResponseOptions {
+  filterNull?: boolean
+}
+
 const errorSchema = t.Object({
   code: t.Number({ description: 'Business error code for failed requests' }),
   msg: t.String({ description: 'Human readable error message' }),
@@ -67,29 +71,84 @@ function isVoidSchema(schema: unknown): boolean {
   return false
 }
 
-function wrapSuccessSchema(schema: unknown, isVoid: boolean): object {
-  if (isVoid) {
+function isNullSchema(schema: unknown): boolean {
+  if (!schema || typeof schema !== 'object') return false
+  return (schema as Record<string, unknown>).type === 'null'
+}
+
+function isNullableSchema(schema: unknown): boolean {
+  if (!schema || typeof schema !== 'object') return false
+  const s = schema as Record<string, unknown>
+  if (s.type === 'null') return false
+  if (Array.isArray(s.type) && (s.type as string[]).includes('null')) return true
+  if (s.nullable === true) return true
+  if (Array.isArray(s.anyOf)) {
+    return (s.anyOf as unknown[]).some(
+      t => typeof t === 'object' && t !== null && (t as Record<string, unknown>).type === 'null',
+    )
+  }
+  return false
+}
+
+function makeNullableFieldsOptional(schema: unknown): unknown {
+  if (!schema || typeof schema !== 'object') return schema
+  const s = schema as Record<string, unknown>
+  if (s.type !== 'object' || !s.properties) return schema
+  const properties = s.properties as Record<string, unknown>
+  const required = Array.isArray(s.required) ? (s.required as string[]) : []
+
+  // t.Null() fields are always filtered at runtime → remove from properties entirely
+  const newProperties: Record<string, unknown> = Object.fromEntries(
+    Object.entries(properties).filter(([, v]) => !isNullSchema(v)),
+  )
+  // t.Nullable(X) fields may be null at runtime → keep in properties but remove from required
+  const newRequired = required.filter(
+    key => !isNullableSchema(properties[key]) && !isNullSchema(properties[key]),
+  )
+
+  const propertiesChanged = Object.keys(newProperties).length !== Object.keys(properties).length
+  const requiredChanged = newRequired.length !== required.length
+  if (!propertiesChanged && !requiredChanged) return schema
+
+  const result: Record<string, unknown> = { ...s, required: newRequired, properties: newProperties }
+  delete result.$id
+  return result
+}
+
+function wrapSuccessSchema(
+  schema: unknown,
+  isVoid: boolean,
+  filterNull = false,
+  resolvedSchema: unknown = schema,
+): object {
+  const codeSchema = { type: 'integer', const: 0, description: 'Business code: 0 means success' }
+  const msgSchema = { type: 'string', description: 'Business message for successful response' }
+
+  if (isVoid || (filterNull && isNullSchema(resolvedSchema))) {
     return {
       type: 'object',
       required: ['code', 'msg'],
-      properties: {
-        code: { type: 'integer', const: 0, description: 'Business code: 0 means success' },
-        msg: { type: 'string', description: 'Business message for successful response' },
-      },
+      properties: { code: codeSchema, msg: msgSchema },
     }
   }
+
+  if (filterNull && isNullableSchema(resolvedSchema)) {
+    return {
+      type: 'object',
+      required: ['code', 'msg'],
+      properties: { code: codeSchema, msg: msgSchema, data: schema },
+    }
+  }
+
+  const dataSchema = filterNull ? makeNullableFieldsOptional(resolvedSchema) : schema
   return {
     type: 'object',
     required: ['code', 'msg', 'data'],
-    properties: {
-      code: { type: 'integer', const: 0, description: 'Business code: 0 means success' },
-      msg: { type: 'string', description: 'Business message for successful response' },
-      data: schema,
-    },
+    properties: { code: codeSchema, msg: msgSchema, data: dataSchema },
   }
 }
 
-function transformOpenApiSpec(spec: Record<string, unknown>): Record<string, unknown> {
+function transformOpenApiSpec(spec: Record<string, unknown>, filterNull: boolean): Record<string, unknown> {
   const paths = spec.paths as Record<string, Record<string, unknown>> | undefined
   if (!paths)
     return spec
@@ -138,7 +197,7 @@ function transformOpenApiSpec(spec: Record<string, unknown>): Record<string, unk
             ...content,
             'application/json': {
               ...jsonContent,
-              schema: wrapSuccessSchema(jsonContent.schema, isVoidSchema(resolvedSchema)),
+              schema: wrapSuccessSchema(jsonContent.schema, isVoidSchema(resolvedSchema), filterNull, resolvedSchema),
             },
           },
         }
@@ -166,7 +225,9 @@ function transformOpenApiSpec(spec: Record<string, unknown>): Record<string, unk
   return { ...spec, paths: transformedPaths }
 }
 
-export function response() {
+export function response(options: ResponseOptions = {}) {
+  const { filterNull = false } = options
+
   return new Elysia({ name: 'response-plugin' })
     .model({ 'common.error': errorSchema })
     .onError({ as: 'global' }, ({ code, error, request, set }) => {
@@ -180,7 +241,7 @@ export function response() {
     .mapResponse({ as: 'global' }, ({ set, responseValue }) => {
       // Intercept OpenAPI spec and wrap all 2xx response schemas with success envelope
       if (isOpenApiSpec(responseValue)) {
-        const transformed = transformOpenApiSpec(responseValue as Record<string, unknown>)
+        const transformed = transformOpenApiSpec(responseValue as Record<string, unknown>, filterNull)
         return new Response(JSON.stringify(transformed), {
           headers: { 'Content-Type': 'application/json' },
         })
@@ -192,6 +253,25 @@ export function response() {
 
       if (isResponseEnvelope(responseValue))
         return
+
+      if (filterNull) {
+        const httpStatus = typeof set.status === 'number' ? set.status : 200
+        if (responseValue === null) {
+          return new Response(JSON.stringify({ code: 0, msg: 'ok' }), {
+            headers: { 'Content-Type': 'application/json' },
+            status: httpStatus,
+          })
+        }
+        if (responseValue && typeof responseValue === 'object' && !Array.isArray(responseValue)) {
+          const filtered = Object.fromEntries(
+            Object.entries(responseValue as Record<string, unknown>).filter(([, v]) => v !== null),
+          )
+          return new Response(JSON.stringify(createSuccessResponse(filtered)), {
+            headers: { 'Content-Type': 'application/json' },
+            status: httpStatus,
+          })
+        }
+      }
 
       const wrapped = createSuccessResponse(responseValue)
       return new Response(JSON.stringify(wrapped), {
