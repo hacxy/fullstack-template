@@ -1,10 +1,10 @@
 # 统一响应协议规范
 
-> 基于 `packages/elysia-plugin-response/`、`src/app.ts`、`src/models/userModel.ts`、`src/controllers/userController.ts` 分析得出。
+> 基于 `packages/elysia-response/`、`src/app.ts`、`src/models/userModel.ts`、`src/controllers/userController.ts` 分析得出。
 
 ## 概述
 
-所有 HTTP 响应统一使用 `{ code, msg, data }` 信封结构，由 `elysia-plugin-response` 插件（workspace package）集中处理。Controller/Service 只返回领域数据或 throw 错误，插件负责自动包裹。
+所有 HTTP 响应统一使用 `{ code, msg, data }` 信封结构，由 `elysia-response` 插件（workspace package）集中处理。Controller/Service 只返回领域数据或 throw 错误，插件负责自动包裹。
 
 ## 响应结构
 
@@ -80,7 +80,7 @@ static findAll() {
 **✅ 正确写法：**
 ```ts
 // 来自 src/models/userModel.ts
-import { responseContract } from 'elysia-plugin-response'
+import { responseContract } from 'elysia-response'
 
 'common.error':      responseContract.createErrorResponseSchema(),
 'user.responseItem': responseContract.createSuccessResponseSchema(userItemSchema),

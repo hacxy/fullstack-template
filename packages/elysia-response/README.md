@@ -1,4 +1,4 @@
-# elysia-plugin-response
+# elysia-response
 
 A configurable response contract and Elysia plugin for unified API envelopes.
 
@@ -21,20 +21,20 @@ A configurable response contract and Elysia plugin for unified API envelopes.
 
 ```bash
 # npm
-npm install elysia-plugin-response elysia
+npm install elysia-response elysia
 
 # pnpm
-pnpm add elysia-plugin-response elysia
+pnpm add elysia-response elysia
 
 # bun
-bun add elysia-plugin-response elysia
+bun add elysia-response elysia
 ```
 
 ## Quick Start
 
 ```ts
 import { Elysia } from 'elysia'
-import { response } from 'elysia-plugin-response'
+import { response } from 'elysia-response'
 
 const app = new Elysia()
   .use(response())

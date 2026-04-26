@@ -1,5 +1,5 @@
 {
-  "name": "elysia-plugin-response",
+  "name": "elysia-response",
   "type": "module",
   "version": "0.0.0",
   "private": true,

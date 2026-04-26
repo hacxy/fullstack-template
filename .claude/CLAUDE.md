@@ -16,7 +16,7 @@
 ## Stack
 
 - **Monorepo**: Bun workspaces (`apps/*`, `packages/*`)
-- **Backend** (`apps/server`): Bun + Elysia 1.4.28 + Drizzle ORM 0.45.2 + SQLite (bun:sqlite) + elysia-plugin-response (workspace)
+- **Backend** (`apps/server`): Bun + Elysia 1.4.28 + Drizzle ORM 0.45.2 + SQLite (bun:sqlite) + elysia-response (workspace)
 - **Frontend** (`apps/web`): React 19.2.5 + Vite 8.0.9 + React Router 7.14.1 + Zustand 5.0.12 + openapi-fetch 0.17.0
 - **Shared** (`packages/shared`): Cross-app types and utilities
 - **Linting**: `@antfu/eslint-config` with `lint-staged` + `commitlint` git hooks

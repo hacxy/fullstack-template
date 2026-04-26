@@ -57,7 +57,7 @@ app.listen(3000)  // 生产环境首次启动会缺少表结构
 **✅ 正确写法：**
 ```ts
 // 来自 src/app.ts
-import { response } from 'elysia-plugin-response'
+import { response } from 'elysia-response'
 
 export const app = new Elysia()
   .use(cors({ origin: process.env.CORS_ORIGIN ?? 'http://localhost:5173' }))

@@ -29,7 +29,7 @@
     "@repo/shared": "workspace:*",
     "drizzle-orm": "^0.45.2",
     "elysia": "^1.4.28",
-    "elysia-plugin-response": "workspace:*"
+    "elysia-response": "workspace:*"
   },
   "devDependencies": {
     "bun-types": "latest",

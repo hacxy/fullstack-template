@@ -2,7 +2,7 @@ import process from 'node:process'
 import { cors } from '@elysiajs/cors'
 import { swagger } from '@elysiajs/swagger'
 import { Elysia } from 'elysia'
-import { response } from 'elysia-plugin-response'
+import { response } from 'elysia-response'
 import { userController } from './controllers/userController.js'
 
 export const app = new Elysia()

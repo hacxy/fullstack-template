@@ -7,13 +7,7 @@ export const userController = new Elysia({ prefix: '/api/users' })
   .get('/', async () => {
     return UserService.findAll()
   }, {
-    response: {
-      200: 'user.responseList',
-      400: 'common.error',
-      404: 'common.error',
-      422: 'common.error',
-      500: 'common.error',
-    },
+    response: { 200: 'user.list' },
     detail: {
       tags: ['Users'],
       summary: 'Get all users',
@@ -24,16 +18,10 @@ export const userController = new Elysia({ prefix: '/api/users' })
     return UserService.create(body)
   }, {
     body: 'user.create',
+    response: { 200: 'user.item' },
     detail: {
       tags: ['Users'],
       summary: 'Create a user',
       description: 'Creates a new user and returns the created record',
-    },
-    response: {
-      200: 'user.responseItem',
-      400: 'common.error',
-      404: 'common.error',
-      422: 'common.error',
-      500: 'common.error',
     },
   })
