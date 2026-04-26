@@ -91,8 +91,8 @@ describe('POST /api/users', () => {
     expect(res.status).toBe(422)
     const body = await res.json()
     expect(body.code).toBe(1001)
-    expect(body.data).toBeNull()
     expect(typeof body.msg).toBe('string')
+    expect(body.data).toBeUndefined()
   })
 
   it('returns 422 when name is empty string', async () => {
@@ -107,7 +107,20 @@ describe('POST /api/users', () => {
     expect(res.status).toBe(422)
     const body = await res.json()
     expect(body.code).toBe(1001)
-    expect(body.data).toBeNull()
     expect(typeof body.msg).toBe('string')
+    expect(body.data).toBeUndefined()
+  })
+})
+
+describe('GET /api/users/test', () => {
+  it('returns 200 with success envelope and no data', async () => {
+    const res = await app.handle(
+      new Request('http://localhost/api/users/test'),
+    )
+
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.code).toBe(0)
+    expect(body.msg).toBe('ok')
   })
 })

@@ -27,9 +27,8 @@ export const userController = new Elysia({ prefix: '/api/users' })
 
   })
   .get('/test', () => {
-    return void 0
+    return undefined
   }, {
-    response: { 200: 'user.test' },
     detail: {
       tags: ['Users'],
       summary: 'Test response',

@@ -13,5 +13,5 @@ export const UserModel = new Elysia()
     }),
     'user.item': userItemSchema,
     'user.list': t.Array(userItemSchema),
-    'user.test': t.Undefined(),
+    'user.test': t.Null(),
   })
