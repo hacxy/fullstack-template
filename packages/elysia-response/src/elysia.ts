@@ -45,7 +45,39 @@ function isOpenApiSpec(value: unknown): boolean {
   return typeof obj.openapi === 'string' && !!obj.paths && !!obj.info
 }
 
-function wrapSuccessSchema(schema: unknown): object {
+function resolveRef(schema: unknown, spec: Record<string, unknown>): unknown {
+  if (!schema || typeof schema !== 'object') return schema
+  const s = schema as Record<string, unknown>
+  if (typeof s.$ref !== 'string') return schema
+  const parts = s.$ref.replace(/^#\//, '').split('/')
+  let resolved: unknown = spec
+  for (const part of parts) {
+    if (!resolved || typeof resolved !== 'object') return schema
+    resolved = (resolved as Record<string, unknown>)[part]
+  }
+  return resolved
+}
+
+function isVoidSchema(schema: unknown): boolean {
+  if (schema === null || schema === undefined) return true
+  if (typeof schema === 'object') {
+    const s = schema as Record<string, unknown>
+    return s.type === 'undefined'
+  }
+  return false
+}
+
+function wrapSuccessSchema(schema: unknown, isVoid: boolean): object {
+  if (isVoid) {
+    return {
+      type: 'object',
+      required: ['code', 'msg'],
+      properties: {
+        code: { type: 'integer', const: 0, description: 'Business code: 0 means success' },
+        msg: { type: 'string', description: 'Business message for successful response' },
+      },
+    }
+  }
   return {
     type: 'object',
     required: ['code', 'msg', 'data'],
@@ -99,13 +131,14 @@ function transformOpenApiSpec(spec: Record<string, unknown>): Record<string, unk
         if (!jsonContent?.schema)
           continue
 
+        const resolvedSchema = resolveRef(jsonContent.schema, spec)
         transformedResponses[statusCode] = {
           ...responseObj,
           content: {
             ...content,
             'application/json': {
               ...jsonContent,
-              schema: wrapSuccessSchema(jsonContent.schema),
+              schema: wrapSuccessSchema(jsonContent.schema, isVoidSchema(resolvedSchema)),
             },
           },
         }
