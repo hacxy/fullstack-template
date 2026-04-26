@@ -24,4 +24,14 @@ export const userController = new Elysia({ prefix: '/api/users' })
       summary: 'Create a user',
       description: 'Creates a new user and returns the created record',
     },
+
+  })
+  .get('/test', () => {
+    return void 0
+  }, {
+    response: { 200: 'user.test' },
+    detail: {
+      tags: ['Users'],
+      summary: 'Test response',
+    },
   })

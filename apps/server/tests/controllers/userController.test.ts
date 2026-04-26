@@ -10,7 +10,7 @@ mock.module('../../src/db', () => ({
   },
 }))
 
-const { app } = await import('../../src/app')
+const { app } = await import('../../src/app.js')
 
 const mockUsers = [
   { id: 1, name: 'Alice', createdAt: new Date('2024-01-01') },
