@@ -170,14 +170,14 @@ export function response() {
   return new Elysia({ name: 'response-plugin' })
     .model({ 'common.error': errorSchema })
     .onError({ as: 'global' }, ({ code, error, request, set }) => {
-      const pathname = new URL(request.url).pathname
-      if (pathname.startsWith('/scalar'))
+      const accept = request.headers.get('accept') ?? ''
+      if (accept.includes('text/html') && !accept.includes('application/json'))
         throw error
       const mapping: ErrorMapping = resolveErrorMapping(code)
       set.status = mapping.statusCode
       return createErrorResponse(mapping.businessCode, getErrorMessage(error, mapping.defaultMessage))
     })
-    .mapResponse({ as: 'global' }, ({ request, set, responseValue }) => {
+    .mapResponse({ as: 'global' }, ({ set, responseValue }) => {
       // Intercept OpenAPI spec and wrap all 2xx response schemas with success envelope
       if (isOpenApiSpec(responseValue)) {
         const transformed = transformOpenApiSpec(responseValue as Record<string, unknown>)
@@ -186,8 +186,8 @@ export function response() {
         })
       }
 
-      const pathname = new URL(request.url).pathname
-      if (pathname.startsWith('/scalar'))
+      const contentType = (set.headers as Record<string, string | undefined>)?.['content-type'] ?? ''
+      if (contentType && !contentType.includes('application/json'))
         return
 
       if (isResponseEnvelope(responseValue))
