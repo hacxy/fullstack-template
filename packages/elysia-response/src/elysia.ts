@@ -48,8 +48,22 @@ const DEFAULT_ERROR_STATUS_CODES = [
 function getErrorMessage(error: unknown, fallback: string): string {
   if (typeof error === 'object' && error && 'message' in error) {
     const maybeMessage = (error as { message?: unknown }).message
-    if (typeof maybeMessage === 'string' && maybeMessage.length > 0)
+    if (typeof maybeMessage === 'string' && maybeMessage.length > 0) {
+      // Raw Elysia internal codes ("NOT_FOUND", "INTERNAL_SERVER_ERROR") or generic HTTP text ("Bad Request") → use fallback
+      if (/^[A-Z][A-Z_]+$/.test(maybeMessage) || maybeMessage === 'Bad Request')
+        return fallback
+      // ValidationError emits a JSON string — extract the human-readable summary
+      if (maybeMessage.startsWith('{')) {
+        try {
+          const parsed = JSON.parse(maybeMessage) as Record<string, unknown>
+          if (typeof parsed.summary === 'string' && parsed.summary.length > 0)
+            return parsed.summary
+        }
+        catch {}
+        return fallback
+      }
       return maybeMessage
+    }
   }
   return fallback
 }
