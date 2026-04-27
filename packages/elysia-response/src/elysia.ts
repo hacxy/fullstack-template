@@ -1,5 +1,6 @@
 import { Elysia, t } from 'elysia'
 import {
+  DEFAULT_ERROR_MAPPING,
   createErrorResponse,
   createSuccessResponse,
   isResponseEnvelope,
@@ -32,6 +33,17 @@ const ERROR_SCHEMA_JSON = {
 }
 
 const HTTP_METHODS = ['get', 'post', 'put', 'patch', 'delete', 'head', 'options'] as const
+
+const ERROR_STATUS_DESCRIPTIONS: Record<string, string> = {
+  '400': 'Bad request',
+  '404': 'Not found',
+  '422': 'Unprocessable entity',
+  '500': 'Internal server error',
+}
+
+const DEFAULT_ERROR_STATUS_CODES = [
+  ...new Set(Object.values(DEFAULT_ERROR_MAPPING).map(m => String(m.statusCode))),
+].sort()
 
 function getErrorMessage(error: unknown, fallback: string): string {
   if (typeof error === 'object' && error && 'message' in error) {
@@ -203,16 +215,12 @@ function transformOpenApiSpec(spec: Record<string, unknown>, filterNull: boolean
         }
       }
 
-      if (!transformedResponses['422']) {
-        transformedResponses['422'] = {
-          description: 'Validation error',
-          content: { 'application/json': { schema: ERROR_SCHEMA_JSON } },
-        }
-      }
-      if (!transformedResponses['500']) {
-        transformedResponses['500'] = {
-          description: 'Internal server error',
-          content: { 'application/json': { schema: ERROR_SCHEMA_JSON } },
+      for (const statusCode of DEFAULT_ERROR_STATUS_CODES) {
+        if (!transformedResponses[statusCode]) {
+          transformedResponses[statusCode] = {
+            description: ERROR_STATUS_DESCRIPTIONS[statusCode] ?? 'Error',
+            content: { 'application/json': { schema: ERROR_SCHEMA_JSON } },
+          }
         }
       }
 

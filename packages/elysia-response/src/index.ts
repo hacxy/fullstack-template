@@ -1,4 +1,5 @@
 export {
+  DEFAULT_ERROR_MAPPING,
   createSuccessResponse,
   createErrorResponse,
   isResponseEnvelope,

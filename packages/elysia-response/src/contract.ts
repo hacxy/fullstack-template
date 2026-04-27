@@ -4,11 +4,13 @@ export interface ErrorMapping {
   defaultMessage: string
 }
 
-const ERROR_MAPPING: Record<string, ErrorMapping> = {
+export const DEFAULT_ERROR_MAPPING: Record<string, ErrorMapping> = {
   VALIDATION: { businessCode: 1001, statusCode: 422, defaultMessage: 'Request validation failed' },
   NOT_FOUND: { businessCode: 1004, statusCode: 404, defaultMessage: 'Resource not found' },
   PARSE: { businessCode: 1002, statusCode: 400, defaultMessage: 'Request payload parse failed' },
   INTERNAL_SERVER_ERROR: { businessCode: 1500, statusCode: 500, defaultMessage: 'Internal server error' },
+  INVALID_COOKIE_SIGNATURE: { businessCode: 1003, statusCode: 400, defaultMessage: 'Invalid cookie signature' },
+  INVALID_FILE_TYPE: { businessCode: 1005, statusCode: 422, defaultMessage: 'Invalid file type' },
 }
 
 export function createSuccessResponse<T>(data: T, message = 'ok') {
@@ -28,6 +30,6 @@ export function isResponseEnvelope(payload: unknown): boolean {
 
 export function resolveErrorMapping(contextCode: string | number): ErrorMapping {
   if (typeof contextCode !== 'string')
-    return ERROR_MAPPING.INTERNAL_SERVER_ERROR
-  return ERROR_MAPPING[contextCode] ?? ERROR_MAPPING.INTERNAL_SERVER_ERROR
+    return DEFAULT_ERROR_MAPPING.INTERNAL_SERVER_ERROR
+  return DEFAULT_ERROR_MAPPING[contextCode] ?? DEFAULT_ERROR_MAPPING.INTERNAL_SERVER_ERROR
 }
