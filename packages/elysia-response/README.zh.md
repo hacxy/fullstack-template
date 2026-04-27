@@ -1,36 +1,29 @@
 # elysia-response
 
-一个可配置的响应契约与 Elysia 插件，用于统一 API 响应 envelope。
+Elysia 插件，用于统一 API 响应 envelope，并自动转换 OpenAPI schema。
 
 [English](./README.md)
 
 ## 功能特性
 
-- 自动将处理器返回值包裹为统一的 `{ code, msg, data }` envelope。
-- 将 Elysia 框架错误映射为业务错误码并设置对应 HTTP 状态码。
-- 自动拦截并改写 OpenAPI spec 的响应 schema，注入成功 envelope 结构。
-- 支持 `filterNull` 选项，过滤运行时响应及 OpenAPI schema 中的 null 字段。
-- 提供底层契约工具函数，支持手动调用。
-
-## 前置要求
-
-- 支持 ESM 的 `Node.js` 或 `Bun` 运行时
-- `elysia` `^1.4.28`（peer dependency）
+- 自动将处理器返回值包裹为 `{ code, msg, data }` envelope
+- 将 Elysia 错误映射为业务错误码并设置对应 HTTP 状态码
+- 自动改写 OpenAPI spec 中 2xx 响应 schema 并注入 400/404/422/500 错误 schema
+- `filterNull` 选项在运行时及 OpenAPI schema 中过滤 null 字段
 
 ## 安装
 
 ```bash
-# npm
-npm install elysia-response elysia
-
-# pnpm
-pnpm add elysia-response elysia
-
-# bun
-bun add elysia-response elysia
+bun add elysia-response
+# npm install elysia-response elysia
+# pnpm add elysia-response elysia
 ```
 
-## 快速开始
+> 需要 `elysia ^1.4.28` 作为 peer dependency。
+
+## 使用
+
+### 基本用法
 
 ```ts
 import { Elysia } from 'elysia'
@@ -38,82 +31,105 @@ import { response } from 'elysia-response'
 
 const app = new Elysia()
   .use(response())
-  .get('/health', () => ({ status: 'ok' }))
+  .get('/users/:id', () => ({ id: 1, name: 'Alice' }))
 ```
 
-插件会拦截每个 JSON 响应，若返回值尚未是 envelope，则自动包裹：
+成功响应自动包裹：
 
 ```json
-{ "code": 0, "msg": "ok", "data": { "status": "ok" } }
+{ "code": 0, "msg": "ok", "data": { "id": 1, "name": "Alice" } }
+```
+
+Elysia 错误自动映射为业务错误响应并携带正确的 HTTP 状态码：
+
+```json
+{ "code": 1004, "msg": "Resource not found" }
+```
+
+### filterNull
+
+开启 `filterNull: true` 后，响应对象中值为 null 的字段会在运行时被过滤，OpenAPI schema 中也会从 `required` 移除对应字段。
+
+```ts
+app.use(response({ filterNull: true }))
+  .get('/profile', () => ({ name: 'Alice', bio: null }))
+// → { "code": 0, "msg": "ok", "data": { "name": "Alice" } }
+```
+
+若整个返回值为 `null`，则 envelope 中不含 `data` 字段：
+
+```ts
+  .get('/optional', () => null)
+// → { "code": 0, "msg": "ok" }
 ```
 
 ## API
 
 ### `response(options?)`
 
-创建 Elysia 插件，行为包括：
+创建 Elysia 插件，接受 `ResponseOptions`：
 
-- 将非 envelope 的 JSON 响应包裹为 `{ code: 0, msg: "ok", data: ... }`。
-- 将 Elysia 错误码映射为业务错误码并设置对应 HTTP 状态码。
-- 拦截 OpenAPI spec，将所有 2xx 响应 schema 改写为成功 envelope 结构，并自动注入 422/500 错误 schema。
+| 选项 | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `filterNull` | `boolean` | `false` | 过滤响应及 OpenAPI schema 中的 null 字段 |
 
 ### `createSuccessResponse(data, message?)`
 
-手动创建成功 envelope：`{ code: 0, msg, data }`。
+用于需要自定义 `msg` 字段（默认为 `"ok"`）的场合，或在不使用插件时手动构建 envelope。
+
+```ts
+createSuccessResponse(data, 'created')
+// { code: 0, msg: 'created', data: { ... } }
+```
 
 ### `createErrorResponse(code, message)`
 
-手动创建错误 envelope：`{ code, msg }`。
+用于在 handler 内返回应用层业务错误——即 Elysia 错误系统无法覆盖的场景，如邮箱重复、余额不足等。插件通过 `isResponseEnvelope` 检测到 envelope 结构后会直接透传，不会重复包裹。
+
+```ts
+.post('/users', async ({ body }) => {
+  const exists = await UserService.emailExists(body.email)
+  if (exists)
+    return createErrorResponse(2001, 'Email already registered')
+  return UserService.create(body)
+})
+// 业务错误 → { "code": 2001, "msg": "Email already registered" }
+// 成功     → { "code": 0, "msg": "ok", "data": { ... } }
+```
 
 ### `isResponseEnvelope(payload)`
 
-若 payload 已具有 `{ code: number, msg: string }` 结构（已包裹），返回 `true`。
+若 `payload` 已具有 `{ code: number, msg: string }` 结构则返回 `true`，插件对已包裹的值跳过处理。
 
 ### `resolveErrorMapping(contextCode)`
 
-根据 Elysia 错误码字符串查询内置错误映射，返回 `{ businessCode, statusCode, defaultMessage }`。
+根据 Elysia 错误码字符串返回对应的 `ErrorMapping`。
 
-## 配置项
+```ts
+resolveErrorMapping('NOT_FOUND')
+// { businessCode: 1004, statusCode: 404, defaultMessage: 'Resource not found' }
+```
 
-### `ResponseOptions`
-
-| 选项 | 默认值 | 说明 |
-| --- | --- | --- |
-| `filterNull` | `false` | 过滤运行时响应中的 null 字段，并调整 OpenAPI schema 中的可空字段 |
-
-#### `filterNull` 行为说明
-
-- 运行时：响应对象中值为 null 的字段会从 envelope `data` 中被移除。
-- 若整个响应值为 `null`，返回不含 `data` 字段的 envelope：`{ code: 0, msg: "ok" }`。
-- OpenAPI spec 中：`t.Null()` 类型字段从 properties 中移除；`t.Nullable(X)` 字段从 `required` 中移除。
-
-### 内置错误映射
+## 错误映射
 
 | Elysia 错误码 | 业务码 | HTTP 状态码 | 默认消息 |
 | --- | --- | --- | --- |
-| `VALIDATION` | `1001` | `422` | `Request validation failed` |
-| `PARSE` | `1002` | `400` | `Request payload parse failed` |
-| `NOT_FOUND` | `1004` | `404` | `Resource not found` |
-| `INTERNAL_SERVER_ERROR` | `1500` | `500` | `Internal server error` |
-
-## 项目结构
-
-```text
-src/
-  contract.ts   # 框架无关的响应契约核心
-  elysia.ts     # Elysia 插件与 OpenAPI spec 转换
-  index.ts      # 对外导出入口
-```
+| `VALIDATION` | 1001 | 422 | Request validation failed |
+| `PARSE` | 1002 | 400 | Request payload parse failed |
+| `INVALID_COOKIE_SIGNATURE` | 1003 | 400 | Invalid cookie signature |
+| `NOT_FOUND` | 1004 | 404 | Resource not found |
+| `INVALID_FILE_TYPE` | 1005 | 422 | Invalid file type |
+| `INTERNAL_SERVER_ERROR` | 1500 | 500 | Internal server error |
 
 ## 导出成员
 
-**值导出：** `response`、`createSuccessResponse`、`createErrorResponse`、`isResponseEnvelope`、`resolveErrorMapping`
+**值导出：** `response`、`DEFAULT_ERROR_MAPPING`、`createSuccessResponse`、`createErrorResponse`、`isResponseEnvelope`、`resolveErrorMapping`
 
-**类型导出：** `ApiResponse`、`ResponseOptions`、`ErrorMapping`
+**类型导出：** `ApiResponse<T>`、`ResponseOptions`、`ErrorMapping`
 
 ## 许可证
 
-当前包未单独声明 license 文件，遵循仓库整体策略。
+遵循仓库整体策略。
 
 ---
 

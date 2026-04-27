@@ -1,36 +1,29 @@
 # elysia-response
 
-A configurable response contract and Elysia plugin for unified API envelopes.
+Elysia plugin for unified API response envelopes with automatic OpenAPI schema transformation.
 
 [中文](./README.zh.md)
 
 ## Features
 
-- Wraps handler return values into a unified `{ code, msg, data }` envelope automatically.
-- Maps Elysia framework errors to business error codes and HTTP status codes.
-- Intercepts and rewrites OpenAPI spec responses to include the success envelope schema.
-- Supports `filterNull` option to strip `null` fields from runtime responses and OpenAPI schemas.
-- Provides low-level contract helpers for manual use.
-
-## Prerequisites
-
-- `Node.js` or `Bun` runtime with ESM support
-- `elysia` `^1.4.28` (peer dependency)
+- Auto-wraps handler return values into a `{ code, msg, data }` envelope
+- Maps Elysia errors to business error codes with appropriate HTTP status codes
+- Rewrites OpenAPI spec 2xx schemas to reflect the envelope structure and injects 400/404/422/500 error schemas
+- `filterNull` option strips null fields from runtime responses and OpenAPI schemas
 
 ## Installation
 
 ```bash
-# npm
-npm install elysia-response elysia
-
-# pnpm
-pnpm add elysia-response elysia
-
-# bun
 bun add elysia-response elysia
+# npm install elysia-response elysia
+# pnpm add elysia-response elysia
 ```
 
-## Quick Start
+> Requires `elysia ^1.4.28` as a peer dependency.
+
+## Usage
+
+### Basic setup
 
 ```ts
 import { Elysia } from 'elysia'
@@ -38,82 +31,105 @@ import { response } from 'elysia-response'
 
 const app = new Elysia()
   .use(response())
-  .get('/health', () => ({ status: 'ok' }))
+  .get('/users/:id', () => ({ id: 1, name: 'Alice' }))
 ```
 
-The plugin intercepts every JSON response. If the return value is not already an envelope, it wraps it:
+Success responses are automatically wrapped:
 
 ```json
-{ "code": 0, "msg": "ok", "data": { "status": "ok" } }
+{ "code": 0, "msg": "ok", "data": { "id": 1, "name": "Alice" } }
+```
+
+Elysia errors produce business error responses with the correct HTTP status:
+
+```json
+{ "code": 1004, "msg": "Resource not found" }
+```
+
+### filterNull
+
+When `filterNull: true`, null-valued fields are stripped from responses at runtime and removed from `required` in OpenAPI schemas.
+
+```ts
+app.use(response({ filterNull: true }))
+  .get('/profile', () => ({ name: 'Alice', bio: null }))
+// → { "code": 0, "msg": "ok", "data": { "name": "Alice" } }
+```
+
+If the entire return value is `null`, the `data` field is omitted:
+
+```ts
+  .get('/optional', () => null)
+// → { "code": 0, "msg": "ok" }
 ```
 
 ## API
 
 ### `response(options?)`
 
-Creates an Elysia plugin that:
+Creates the Elysia plugin. Accepts `ResponseOptions`:
 
-- Wraps non-envelope JSON responses into `{ code: 0, msg: "ok", data: ... }`.
-- Maps Elysia error codes to business error codes with appropriate HTTP status codes.
-- Intercepts the OpenAPI spec and rewrites all 2xx response schemas to reflect the success envelope, and auto-injects 422/500 error schemas.
+| Option | Type | Default | Description |
+| --- | --- | --- | --- |
+| `filterNull` | `boolean` | `false` | Strip `null` fields from responses and OpenAPI schemas |
 
 ### `createSuccessResponse(data, message?)`
 
-Manually create a success envelope: `{ code: 0, msg, data }`.
+Use when you need a custom `msg` value (the default is `"ok"`), or when building an envelope without the plugin.
+
+```ts
+createSuccessResponse(data, 'created')
+// { code: 0, msg: 'created', data: { ... } }
+```
 
 ### `createErrorResponse(code, message)`
 
-Manually create an error envelope: `{ code, msg }`.
+Use for application-level business errors inside a handler — cases the Elysia error system doesn't cover, such as duplicate emails or insufficient balance. The plugin detects the envelope shape via `isResponseEnvelope` and passes it through without re-wrapping.
+
+```ts
+.post('/users', async ({ body }) => {
+  const exists = await UserService.emailExists(body.email)
+  if (exists)
+    return createErrorResponse(2001, 'Email already registered')
+  return UserService.create(body)
+})
+// business error → { "code": 2001, "msg": "Email already registered" }
+// success       → { "code": 0, "msg": "ok", "data": { ... } }
+```
 
 ### `isResponseEnvelope(payload)`
 
-Returns `true` if the payload already has a `{ code: number, msg: string }` shape (already wrapped).
+Returns `true` if `payload` already has a `{ code: number, msg: string }` shape. The plugin skips wrapping for values that match.
 
 ### `resolveErrorMapping(contextCode)`
 
-Looks up the built-in error mapping for an Elysia error code string and returns `{ businessCode, statusCode, defaultMessage }`.
+Returns the `ErrorMapping` for a given Elysia error code string.
 
-## Configuration
-
-### `ResponseOptions`
-
-| Option | Default | Description |
-| --- | --- | --- |
-| `filterNull` | `false` | Strip `null` fields from runtime responses and adjust nullable fields in OpenAPI schemas |
-
-#### `filterNull` behavior
-
-- At runtime: null-valued fields are omitted from the envelope `data` object.
-- If the entire response value is `null`, the envelope is returned without a `data` field: `{ code: 0, msg: "ok" }`.
-- In the OpenAPI spec: `t.Null()` fields are removed from properties; `t.Nullable(X)` fields are removed from `required`.
-
-### Built-in Error Mapping
-
-| Elysia Error Code | Business Code | HTTP Status | Default Message |
-| --- | --- | --- | --- |
-| `VALIDATION` | `1001` | `422` | `Request validation failed` |
-| `PARSE` | `1002` | `400` | `Request payload parse failed` |
-| `NOT_FOUND` | `1004` | `404` | `Resource not found` |
-| `INTERNAL_SERVER_ERROR` | `1500` | `500` | `Internal server error` |
-
-## Project Structure
-
-```text
-src/
-  contract.ts   # framework-agnostic response contract
-  elysia.ts     # Elysia plugin and OpenAPI spec transformation
-  index.ts      # public exports
+```ts
+resolveErrorMapping('NOT_FOUND')
+// { businessCode: 1004, statusCode: 404, defaultMessage: 'Resource not found' }
 ```
 
-## Exported Members
+## Error Mapping
 
-**Values:** `response`, `createSuccessResponse`, `createErrorResponse`, `isResponseEnvelope`, `resolveErrorMapping`
+| Elysia Error | Business Code | HTTP Status | Default Message |
+| --- | --- | --- | --- |
+| `VALIDATION` | 1001 | 422 | Request validation failed |
+| `PARSE` | 1002 | 400 | Request payload parse failed |
+| `INVALID_COOKIE_SIGNATURE` | 1003 | 400 | Invalid cookie signature |
+| `NOT_FOUND` | 1004 | 404 | Resource not found |
+| `INVALID_FILE_TYPE` | 1005 | 422 | Invalid file type |
+| `INTERNAL_SERVER_ERROR` | 1500 | 500 | Internal server error |
 
-**Types:** `ApiResponse`, `ResponseOptions`, `ErrorMapping`
+## Exports
+
+**Values:** `response`, `DEFAULT_ERROR_MAPPING`, `createSuccessResponse`, `createErrorResponse`, `isResponseEnvelope`, `resolveErrorMapping`
+
+**Types:** `ApiResponse<T>`, `ResponseOptions`, `ErrorMapping`
 
 ## License
 
-Currently no standalone license file is defined for this package. It follows the repository policy.
+Follows the repository policy.
 
 ---
 
