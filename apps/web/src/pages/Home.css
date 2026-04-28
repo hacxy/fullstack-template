@@ -39,6 +39,7 @@
   border-radius: 12px;
   overflow: hidden;
   background: var(--bg);
+  margin-bottom: 24px;
 }
 
 #demo-header {

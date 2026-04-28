@@ -85,7 +85,7 @@ function Home() {
           <p>Explore the API and framework docs</p>
           <ul>
             <li>
-              <a href="http://localhost:3000/scalar" target="_blank">
+              <a href={`${import.meta.env.VITE_API_URL}/scalar`} target="_blank">
                 API Reference
               </a>
             </li>
@@ -109,35 +109,16 @@ function Home() {
           <p>Connect with the open-source ecosystem</p>
           <ul>
             <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
+              <a href="https://github.com/hacxy/fullstack-template" target="_blank">
                 <svg className="button-icon" role="presentation" aria-hidden="true">
                   <use href="/icons.svg#github-icon"></use>
                 </svg>
                 GitHub
               </a>
             </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg className="button-icon" role="presentation" aria-hidden="true">
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg className="button-icon" role="presentation" aria-hidden="true">
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
           </ul>
         </div>
       </section>
-
-      <div className="ticks"></div>
-      <section id="spacer"></section>
     </>
   )
 }
