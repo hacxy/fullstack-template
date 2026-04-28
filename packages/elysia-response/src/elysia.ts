@@ -1,11 +1,12 @@
+import type { DocumentDecoration } from 'elysia'
 import { Elysia, t } from 'elysia'
 import {
+  BusinessError,
   DEFAULT_ERROR_MAPPING,
   createErrorResponse,
   createSuccessResponse,
   isResponseEnvelope,
   resolveErrorMapping,
-  type ErrorMapping,
 } from './contract.js'
 
 export interface ApiResponse<T> {
@@ -24,11 +25,11 @@ const errorSchema = t.Object({
 })
 
 const ERROR_SCHEMA_JSON = {
-  type: 'object',
+  type: 'object' as const,
   required: ['code', 'msg'],
   properties: {
-    code: { type: 'integer', description: 'Business error code for failed requests' },
-    msg: { type: 'string', description: 'Human readable error message' },
+    code: { type: 'integer' as const, description: 'Business error code for failed requests' },
+    msg: { type: 'string' as const, description: 'Human readable error message' },
   },
 }
 
@@ -238,7 +239,36 @@ function transformOpenApiSpec(spec: Record<string, unknown>, filterNull: boolean
         }
       }
 
-      transformedPathItem[method] = { ...op, responses: transformedResponses }
+      const security = op.security as unknown[] | undefined
+      const hasBearerAuth = security?.some(s => Array.isArray((s as Record<string, unknown>).BearerAuth))
+      if (hasBearerAuth && !transformedResponses['401']) {
+        transformedResponses['401'] = {
+          description: 'Unauthorized',
+          content: { 'application/json': { schema: ERROR_SCHEMA_JSON } },
+        }
+      }
+
+      type BusinessErrorEntry = { statusCode: number, description: string }
+      const businessErrors = op['x-business-errors'] as BusinessErrorEntry[] | undefined
+      if (businessErrors?.length) {
+        const grouped = new Map<string, string[]>()
+        for (const e of businessErrors) {
+          const key = String(e.statusCode)
+          const msgs = grouped.get(key) ?? []
+          if (e.description)
+            msgs.push(e.description)
+          grouped.set(key, msgs)
+        }
+        for (const [key, msgs] of grouped) {
+          transformedResponses[key] = {
+            description: msgs.join(' / ') || 'Error',
+            content: { 'application/json': { schema: ERROR_SCHEMA_JSON } },
+          }
+        }
+      }
+
+      const { 'x-business-errors': _xbe, ...cleanOp } = op
+      transformedPathItem[method] = { ...cleanOp, responses: transformedResponses }
     }
 
     transformedPaths[pathKey] = transformedPathItem
@@ -247,16 +277,46 @@ function transformOpenApiSpec(spec: Record<string, unknown>, filterNull: boolean
   return { ...spec, paths: transformedPaths }
 }
 
+export function buildErrorResponses(list: BusinessError[]) {
+  const grouped = new Map<string, string[]>()
+  for (const e of list) {
+    const key = String(e.statusCode)
+    const msgs = grouped.get(key) ?? []
+    if (e.message)
+      msgs.push(e.message)
+    grouped.set(key, msgs)
+  }
+  return Object.fromEntries(
+    [...grouped.entries()].map(([status, msgs]) => [status, {
+      description: msgs.join(' / ') || 'Error',
+      content: { 'application/json': { schema: ERROR_SCHEMA_JSON } },
+    }]),
+  )
+}
+
 export function response(options: ResponseOptions = {}) {
   const { filterNull = false } = options
 
   return new Elysia({ name: 'response-plugin' })
+    .macro({
+      errors(list: BusinessError[]) {
+        return {
+          detail: {
+            'x-business-errors': list.map(e => ({ statusCode: e.statusCode, description: e.message || 'Error' })),
+          } as unknown as DocumentDecoration,
+        }
+      },
+    })
     .model({ 'common.error': errorSchema })
     .onError({ as: 'global' }, ({ code, error, request, set }) => {
       const accept = request.headers.get('accept') ?? ''
       if (accept.includes('text/html') && !accept.includes('application/json'))
         throw error
-      const mapping: ErrorMapping = resolveErrorMapping(code)
+      if (error instanceof BusinessError) {
+        set.status = error.statusCode
+        return createErrorResponse(error.businessCode, error.message || '')
+      }
+      const mapping = resolveErrorMapping(code)
       set.status = mapping.statusCode
       return createErrorResponse(mapping.businessCode, getErrorMessage(error, mapping.defaultMessage))
     })

@@ -4,6 +4,17 @@ export interface ErrorMapping {
   defaultMessage: string
 }
 
+export class BusinessError extends Error {
+  constructor(
+    public readonly businessCode: number,
+    message?: string,
+    public readonly statusCode: number = 400,
+  ) {
+    super(message)
+    this.name = 'BusinessError'
+  }
+}
+
 export const DEFAULT_ERROR_MAPPING: Record<string, ErrorMapping> = {
   VALIDATION: { businessCode: 1001, statusCode: 422, defaultMessage: 'Request validation failed' },
   NOT_FOUND: { businessCode: 1004, statusCode: 404, defaultMessage: 'Resource not found' },
@@ -28,8 +39,9 @@ export function isResponseEnvelope(payload: unknown): boolean {
   return typeof target.code === 'number' && typeof target.msg === 'string'
 }
 
-export function resolveErrorMapping(contextCode: string | number): ErrorMapping {
+export function resolveErrorMapping(contextCode: string | number, additionalMappings?: Record<string, ErrorMapping>): ErrorMapping {
   if (typeof contextCode !== 'string')
     return DEFAULT_ERROR_MAPPING.INTERNAL_SERVER_ERROR
-  return DEFAULT_ERROR_MAPPING[contextCode] ?? DEFAULT_ERROR_MAPPING.INTERNAL_SERVER_ERROR
+  const merged = additionalMappings ? { ...DEFAULT_ERROR_MAPPING, ...additionalMappings } : DEFAULT_ERROR_MAPPING
+  return merged[contextCode] ?? DEFAULT_ERROR_MAPPING.INTERNAL_SERVER_ERROR
 }
