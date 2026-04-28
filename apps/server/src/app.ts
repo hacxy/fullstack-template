@@ -3,6 +3,7 @@ import { cors } from '@elysiajs/cors'
 import { swagger } from '@elysiajs/swagger'
 import { Elysia } from 'elysia'
 import { response } from 'elysia-response'
+import { authController } from './controllers/authController.js'
 import { userController } from './controllers/userController.js'
 
 export const app = new Elysia()
@@ -24,8 +25,18 @@ export const app = new Elysia()
         ...(process.env.SERVER_URL ? [{ url: process.env.SERVER_URL, description: 'Production server' }] : []),
         { url: `http://localhost:${process.env.PORT ?? 3000}`, description: 'Local development server' },
       ],
+      components: {
+        securitySchemes: {
+          BearerAuth: {
+            type: 'http',
+            scheme: 'bearer',
+            bearerFormat: 'JWT',
+          },
+        },
+      },
     },
   }))
+  .use(authController)
   .use(userController)
 
 export type App = typeof app

@@ -8,6 +8,13 @@
       "when": 1776837471947,
       "tag": "0000_thin_rattler",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1777342977696,
+      "tag": "0001_sturdy_bucky",
+      "breakpoints": true
     }
   ]
 }

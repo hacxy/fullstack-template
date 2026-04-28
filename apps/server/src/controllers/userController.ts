@@ -1,9 +1,11 @@
 import { Elysia } from 'elysia'
+import { jwtGuard } from '@/plugins/jwtGuard.js'
 import { UserModel } from '../models/userModel.js'
 import { UserService } from '../services/userService.js'
 
 export const userController = new Elysia({ prefix: '/api/users' })
   .use(UserModel)
+  .use(jwtGuard)
   .get('/', async () => {
     return UserService.findAll()
   }, {
@@ -14,24 +16,13 @@ export const userController = new Elysia({ prefix: '/api/users' })
       description: 'Returns a list of all users in the database',
     },
   })
-  .post('/', async ({ body }) => {
-    return UserService.create(body)
-  }, {
-    body: 'user.create',
-    response: { 200: 'user.item' },
-    detail: {
-      tags: ['Users'],
-      summary: 'Create a user',
-      description: 'Creates a new user and returns the created record',
-    },
-
-  })
   .get('/test', () => {
     return {
       name: 'hacxy',
       foo: null,
     }
   }, {
+    auth: true,
     response: {
       200: 'user.test',
     },
